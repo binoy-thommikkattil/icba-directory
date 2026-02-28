@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X } from 'lucide-react';
 
 export default function ApprovalsPage() {
   const { user, role, loading: authLoading } = useAuth();
@@ -15,8 +15,11 @@ export default function ApprovalsPage() {
   const [pendingCreations, setPendingCreations] = useState<any[]>([]);
   const [pendingEdits, setPendingEdits] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // NEW: State to hold the specific edit we are currently reviewing
+  const [reviewEdit, setReviewEdit] = useState<any | null>(null);
 
-  // Security Check: Only admins can view this page
+  // Security Check
   useEffect(() => {
     if (!authLoading) {
       if (!user) router.push('/login');
@@ -27,15 +30,12 @@ export default function ApprovalsPage() {
   useEffect(() => {
     if (role !== 'admin') return;
 
-    // 1. Listen for Pending User Accounts
     const qUsers = query(collection(db, 'users'), where('role', '==', 'pending'));
     const unUsers = onSnapshot(qUsers, (snap) => setPendingUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
-    // 2. Listen for Brand New Family Profiles
     const qCreations = query(collection(db, 'members'), where('isPendingCreation', '==', true));
     const unCreations = onSnapshot(qCreations, (snap) => setPendingCreations(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
-    // 3. Listen for Edits to Existing Profiles
     const qEdits = query(collection(db, 'members'), where('hasPendingEdit', '==', true));
     const unEdits = onSnapshot(qEdits, (snap) => {
       setPendingEdits(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -68,24 +68,24 @@ export default function ApprovalsPage() {
   // --- ACTIONS: PROFILE EDITS ---
   const handleApproveEdit = async (member: any) => {
     if (!member.draftData) return;
-    // Overwrite the live data with the draft data, and clear the pending flags
     await updateDoc(doc(db, 'members', member.id), {
       ...member.draftData,
       hasPendingEdit: false,
       draftData: null
     });
+    setReviewEdit(null); // Close modal on success
   };
   const handleRejectEdit = async (id: string) => {
     if (confirm("Are you sure you want to discard these proposed changes?")) {
-      // Clear the pending flags, keeping the original live data intact
       await updateDoc(doc(db, 'members', id), { hasPendingEdit: false, draftData: null });
+      setReviewEdit(null); // Close modal on success
     }
   };
 
   if (authLoading || isLoading) return <div className="flex min-h-screen items-center justify-center font-bold text-slate-500"><Loader2 className="animate-spin mr-2" /> Loading dashboard...</div>;
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen pb-24">
+    <div className="p-6 bg-slate-50 min-h-screen pb-24 relative">
       <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
       </Link>
@@ -105,18 +105,17 @@ export default function ApprovalsPage() {
         ) : (
           <div className="space-y-3">
             {pendingUsers.map(u => (
-              <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div>
-                  <p className="font-bold text-slate-900">{u.name}</p>
-                  <p className="text-sm text-slate-500">{u.email}</p>
-                  <p className="text-xs text-slate-400 mt-1">Requested: {new Date(u.createdAt).toLocaleDateString()}</p>
+              <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap sm:flex-nowrap justify-between items-center gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-900 truncate">{u.name}</p>
+                  <p className="text-sm text-slate-500 truncate">{u.email}</p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleApproveUser(u.id)} className="flex-1 sm:flex-none flex items-center justify-center bg-teal-50 text-teal-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-teal-100 transition border border-teal-200">
-                    <CheckCircle size={16} className="mr-1.5" /> Approve
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => handleApproveUser(u.id)} className="flex items-center justify-center bg-teal-50 text-teal-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-teal-100 transition border border-teal-200">
+                    <CheckCircle size={16} className="mr-1 sm:mr-0 lg:mr-1" /> <span className="hidden sm:inline">Approve</span>
                   </button>
-                  <button onClick={() => handleRejectUser(u.id)} className="flex-1 sm:flex-none flex items-center justify-center bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200">
-                    <XCircle size={16} className="mr-1.5" /> Deny
+                  <button onClick={() => handleRejectUser(u.id)} className="flex items-center justify-center bg-red-50 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200">
+                    <XCircle size={16} className="mr-1 sm:mr-0 lg:mr-1" /> <span className="hidden sm:inline">Deny</span>
                   </button>
                 </div>
               </div>
@@ -135,18 +134,17 @@ export default function ApprovalsPage() {
         ) : (
           <div className="space-y-3">
             {pendingCreations.map(family => (
-              <div key={family.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div>
-                  <p className="font-bold text-slate-900">{family.familyName} Family</p>
-                  <p className="text-sm text-slate-500">{family.members?.length || 0} members listed</p>
-                  <p className="text-xs text-slate-400 mt-1">Submitted by: {family.submittedBy || 'Unknown'}</p>
+              <div key={family.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap sm:flex-nowrap justify-between items-center gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-900 truncate">{family.familyName} Family</p>
+                  <p className="text-sm text-slate-500 truncate">{family.members?.length || 0} members listed</p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleApproveCreation(family.id)} className="flex-1 sm:flex-none flex items-center justify-center bg-teal-50 text-teal-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-teal-100 transition border border-teal-200">
-                    <CheckCircle size={16} className="mr-1.5" /> Publish
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => handleApproveCreation(family.id)} className="flex items-center justify-center bg-teal-50 text-teal-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-teal-100 transition border border-teal-200">
+                    <CheckCircle size={16} className="mr-1 sm:mr-0 lg:mr-1" /> <span className="hidden sm:inline">Publish</span>
                   </button>
-                  <button onClick={() => handleRejectCreation(family.id)} className="flex-1 sm:flex-none flex items-center justify-center bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200">
-                    <XCircle size={16} className="mr-1.5" /> Delete
+                  <button onClick={() => handleRejectCreation(family.id)} className="flex items-center justify-center bg-red-50 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200">
+                    <XCircle size={16} className="mr-1 sm:mr-0 lg:mr-1" /> <span className="hidden sm:inline">Delete</span>
                   </button>
                 </div>
               </div>
@@ -155,7 +153,7 @@ export default function ApprovalsPage() {
         )}
       </section>
 
-      {/* SECTION 3: FAMILY EDITS */}
+      {/* SECTION 3: FAMILY EDITS (NOW WITH REVIEW BUTTON) */}
       <section>
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
           <Edit3 size={20} className="mr-2 text-purple-500" /> Directory Edit Requests
@@ -165,18 +163,16 @@ export default function ApprovalsPage() {
         ) : (
           <div className="space-y-3">
             {pendingEdits.map(family => (
-              <div key={family.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div>
-                  <p className="font-bold text-slate-900">{family.familyName} Family</p>
-                  <p className="text-sm text-slate-500">Proposed updates waiting for review.</p>
-                  <p className="text-xs text-slate-400 mt-1">Submitted by: {family.submittedBy || 'Member'}</p>
+              <div key={family.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center gap-4">
+                {/* min-w-0 prevents text from pushing buttons off screen */}
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-900 truncate">{family.familyName} Family</p>
+                  <p className="text-sm text-slate-500 truncate">Proposed updates waiting for review.</p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleApproveEdit(family)} className="flex-1 sm:flex-none flex items-center justify-center bg-teal-50 text-teal-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-teal-100 transition border border-teal-200">
-                    <CheckCircle size={16} className="mr-1.5" /> Merge Edit
-                  </button>
-                  <button onClick={() => handleRejectEdit(family.id)} className="flex-1 sm:flex-none flex items-center justify-center bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200">
-                    <XCircle size={16} className="mr-1.5" /> Discard
+                {/* shrink-0 keeps the button perfectly sized */}
+                <div className="shrink-0">
+                  <button onClick={() => setReviewEdit(family)} className="flex items-center justify-center bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-100 transition border border-indigo-200">
+                    <Search size={16} className="mr-1.5" /> Review
                   </button>
                 </div>
               </div>
@@ -184,6 +180,80 @@ export default function ApprovalsPage() {
           </div>
         )}
       </section>
+
+      {/* --- REVIEW MODAL --- */}
+      {reviewEdit && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
+              <h2 className="font-serif font-bold text-xl text-slate-900">Review: {reviewEdit.familyName} Family</h2>
+              <button onClick={() => setReviewEdit(null)} className="p-2 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full transition">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content - Displaying the Draft Data */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-6">
+              <div className="bg-indigo-50 text-indigo-800 p-3 rounded-xl border border-indigo-100 text-sm font-medium flex items-center">
+                <ShieldAlert size={18} className="mr-2 shrink-0" />
+                You are viewing the proposed new details submitted by: {reviewEdit.draftData?.submittedBy || 'Member'}
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Proposed Contact Info</h3>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
+                  <div className="flex flex-col sm:flex-row sm:gap-4 border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-700 sm:w-1/3">Status</span>
+                    <span className="text-slate-600">{reviewEdit.draftData?.status || 'Active'}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:gap-4 border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-700 sm:w-1/3">Primary Mobile</span>
+                    <span className="text-slate-600">{reviewEdit.draftData?.primaryMobile || '-'}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:gap-4 border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-700 sm:w-1/3">Current Address</span>
+                    <span className="text-slate-600">{reviewEdit.draftData?.currentAddress || '-'}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:gap-4 pb-1">
+                    <span className="font-bold text-slate-700 sm:w-1/3">Native Address</span>
+                    <span className="text-slate-600">{reviewEdit.draftData?.nativeAddress || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Proposed Members</h3>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
+                  {reviewEdit.draftData?.members?.map((m: any, i: number) => (
+                    <div key={i} className="pb-3 border-b border-slate-100 last:border-0 last:pb-0">
+                      <p className="font-bold text-slate-800 text-base">{m.name}</p>
+                      <p className="text-slate-500 mt-0.5">
+                        {m.relationship || 'No relation'} • Blood: {m.bloodGroup || 'N/A'} {m.willingToDonate && '(Donor)'}
+                      </p>
+                      {m.tags && m.tags.length > 0 && (
+                        <p className="text-slate-400 text-xs mt-1">Tags: {m.tags.join(', ')}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer / Action Buttons */}
+            <div className="p-5 border-t border-slate-200 flex gap-3 bg-white">
+              <button onClick={() => handleRejectEdit(reviewEdit.id)} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition border border-red-100">
+                Discard Changes
+              </button>
+              <button onClick={() => handleApproveEdit(reviewEdit)} className="flex-[2] py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition shadow-sm">
+                Approve & Merge Update
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

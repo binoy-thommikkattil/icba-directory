@@ -3,10 +3,10 @@ import { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users, Calendar, Heart, ShieldCheck, LogOut, Loader2, PlusCircle } from 'lucide-react';
+import { Users, Calendar, Heart, ShieldCheck, Loader2, PlusCircle } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user, role, loading, logout } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
 
   // Security Check: Make sure they are logged in and approved!
@@ -25,14 +25,9 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 pb-24">
       
-      <header className="mb-8 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">ICBA Dashboard</h1>
-          <p className="text-slate-500 text-sm">Welcome back, {user.displayName || 'Member'}</p>
-        </div>
-        <button onClick={logout} className="p-2 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50" title="Sign Out">
-          <LogOut size={20} />
-        </button>
+      {/* FIXED: Removed duplicate Logout button and Welcome text */}
+      <header className="mb-8">
+        <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">Dashboard</h1>
       </header>
 
       {/* CORE MEMBER FEATURES */}
