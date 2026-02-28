@@ -4,7 +4,7 @@ import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Edit2, X, Heart } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function PrayerPage() {
@@ -91,7 +91,9 @@ export default function PrayerPage() {
       <div className="flex justify-between items-end mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2 flex items-center">
-            <Heart size={28} className="text-rose-500 mr-2" /> Prayer Points
+            {/* Swapped Heart icon for perfectly sized clasped hands */}
+            <span className="text-[28px] leading-none mr-2.5" role="img" aria-label="praying hands">🙏</span> 
+            Prayer Points
           </h1>
           <p className="text-slate-500 text-sm">Current needs of the assembly</p>
         </div>
@@ -165,7 +167,6 @@ export default function PrayerPage() {
                 <ul className="space-y-3">
                   {point.subpoints.map((sub: string, i: number) => (
                     <li key={i} className="text-slate-600 text-[15px] flex items-start">
-                      {/* Soft Rose colored bullet points */}
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-300 mt-2 mr-3 shrink-0"></span>
                       <span className="leading-relaxed">{sub}</span>
                     </li>

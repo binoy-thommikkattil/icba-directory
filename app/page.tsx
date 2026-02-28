@@ -52,8 +52,8 @@ export default function Dashboard() {
         </Link>
 
         <Link href="/prayer" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition">
-            <Heart size={24} />
+          <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center group-hover:bg-rose-600 transition">
+            <span className="text-2xl" role="img" aria-label="praying hands">🙏</span>
           </div>
           <div>
             <h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2>
