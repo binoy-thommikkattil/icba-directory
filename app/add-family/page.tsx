@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon } from 'lucide-react';
 import Link from 'next/link';
 import Cropper from 'react-easy-crop';
+import { useAuth } from '@/lib/AuthContext';
 
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
@@ -43,6 +44,7 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
 };
 
 export default function AddFamily() {
+  const { user, role, userProfile } = useAuth(); // ADDED userProfile
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   
@@ -106,7 +108,8 @@ export default function AddFamily() {
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
       })),
       lastEdited: new Date().toISOString(),
-      submittedBy: 'Public Link',
+      // UPDATED TO USE PROFILE NAME
+      submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User',
       isPendingCreation: true, 
       hasPendingEdit: false,
       draftData: null

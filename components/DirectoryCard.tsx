@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { useState } from 'react';
 import { jsPDF } from 'jspdf';
+import { logActivity } from '@/lib/logger';
 
 const getBase64ImageFromUrl = async (imageUrl: string): Promise<{ dataUrl: string, width: number, height: number } | null> => {
   return new Promise((resolve) => {
@@ -68,6 +69,7 @@ export default function DirectoryCard({
 
   const handleSharePDF = async () => {
     setIsSharing(true);
+    await logActivity(user, "Exported/Shared Card", `Exported the directory card for the ${familyName} family.`);
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;

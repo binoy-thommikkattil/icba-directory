@@ -20,7 +20,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> 
   canvas.height = pixelCrop.height * scale;
   const ctx = canvas.getContext('2d');
   ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.8); 
+  return canvas.toDataURL('image/jpeg', 0.8);
 };
 
 const autoCompressImage = async (base64Str: string): Promise<string> => {
@@ -29,14 +29,14 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
     const img = new window.Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 400; 
+      const MAX_WIDTH = 400;
       let scale = 1;
       if (img.width > MAX_WIDTH) scale = MAX_WIDTH / img.width;
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = () => resolve(base64Str);
     img.src = base64Str;
@@ -46,10 +46,10 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
 export default function EditFamily({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, userProfile } = useAuth(); // ADDED userProfile
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   const [familyName, setFamilyName] = useState('');
   const [currentAddress, setCurrentAddress] = useState('');
   const [nativeAddress, setNativeAddress] = useState('');
@@ -88,12 +88,11 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
           setStatus(data.status || 'Active');
           setPhotoUrl(data.photoUrl || '');
           setNotes(data.notes || '');
-          
+
           if (data.members && data.members.length > 0) {
             setMembers(data.members.map((m: any) => ({
               ...m,
-              // Converts the database array into a readable string for the text box
-              tags: Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || ''), 
+              tags: Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || ''),
               willingToDonate: m.willingToDonate || false
             })));
           }
@@ -144,11 +143,10 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
     }
 
     const updatedData = {
-      familyName, currentAddress, nativeAddress, homeAssembly, commendedAssembly, 
+      familyName, currentAddress, nativeAddress, homeAssembly, commendedAssembly,
       primaryMobile, photoUrl: safePhotoUrl, status, notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
-        // Converts the string back into a clean array before saving
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
       })),
       lastEdited: new Date().toISOString(),
@@ -160,7 +158,12 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
         alert('Family updated successfully!');
       } else {
         await updateDoc(doc(db, 'members', resolvedParams.id), {
-          hasPendingEdit: true, draftData: updatedData, submittedBy: user?.email || 'Member'
+          hasPendingEdit: true,
+          draftData: {
+            ...updatedData,
+            // UPDATED TO USE PROFILE NAME
+            submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User'
+          }
         });
         alert('Edit submitted! An admin will review your changes shortly.');
       }
@@ -199,7 +202,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo</h2>
@@ -213,12 +216,12 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
           )}
           <label className={`flex items-center justify-center w-full p-4 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-white hover:bg-slate-50 transition ${photoUrl ? 'mt-4' : 'h-32 flex-col'}`}>
             {photoUrl ? (
-               <div className="flex items-center text-teal-700 font-bold"><Upload className="w-5 h-5 mr-2" /> Change Photo</div>
+              <div className="flex items-center text-teal-700 font-bold"><Upload className="w-5 h-5 mr-2" /> Change Photo</div>
             ) : (
-               <div className="flex flex-col items-center justify-center">
-                 <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                 <p className="text-sm text-slate-500 font-medium">Click to upload new photo</p>
-               </div>
+              <div className="flex flex-col items-center justify-center">
+                <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                <p className="text-sm text-slate-500 font-medium">Click to upload new photo</p>
+              </div>
             )}
             <input type="file" accept="image/*" className="hidden" onChange={onFileChange} />
           </label>
@@ -247,13 +250,13 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
           <div className="flex justify-between items-center border-b border-slate-200 pb-2">
             <h2 className="font-bold text-slate-800">Family Members *</h2>
             <button type="button" onClick={handleAddMember} className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-md hover:bg-teal-700 flex items-center">
-              <Plus size={14} className="mr-1"/> Add Person
+              <Plus size={14} className="mr-1" /> Add Person
             </button>
           </div>
           <div className="space-y-4">
             {members.map((member, index) => (
               <div key={index} className="flex gap-3 items-start relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                
+
                 <div className="flex-1 space-y-4">
                   {/* Name & Relation Row */}
                   <div className="flex gap-3">
@@ -293,7 +296,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
 
                 {/* Remove button */}
                 {members.length > 1 && (
-                  <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18}/></button>
+                  <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
                 )}
               </div>
             ))}
