@@ -47,7 +47,7 @@ export interface MemberProps {
   status?: string;
   notes?: string;
   lastEdited?: string;
-  hasPendingEdit?: boolean; // NEW: Added to check for pending edits
+  hasPendingEdit?: boolean;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
 }
@@ -216,12 +216,14 @@ export default function DirectoryCard({
             <h2 className="text-3xl font-serif font-bold text-slate-900 break-words leading-tight mb-2">
               {familyName} Family
             </h2>
-            <div className="flex items-center gap-2">
-              <div 
-                className={`w-2.5 h-2.5 rounded-full shrink-0 ${status === 'Inactive' ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.6)]' : 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]'}`} 
-              />
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{status}</span>
-            </div>
+            {/* ONLY DISPLAY STATUS IF INACTIVE */}
+            {status === 'Inactive' && (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full text-xs font-bold border bg-slate-50 text-slate-500 border-slate-200 uppercase tracking-widest inline-block">
+                  {status}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex space-x-2 print:hidden shrink-0 mt-1">
@@ -229,7 +231,6 @@ export default function DirectoryCard({
               {isSharing ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
             </button>
             
-            {/* NEW: LOCKED EDIT BUTTON LOGIC */}
             {user && id && (
               isAdmin || !hasPendingEdit ? (
                 <Link href={`/edit-family/${id}`} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 flex items-center transition">
