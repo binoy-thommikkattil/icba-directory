@@ -1,84 +1,102 @@
 'use client';
+import { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import Link from 'next/link';
-import { Users, ClipboardCheck, Video, Heart, Droplet, BookOpen } from 'lucide-react';
+import { Users, Calendar, Heart, ShieldCheck, LogOut, Loader2, PlusCircle } from 'lucide-react';
 
-export default function DashboardPage() {
-  const { user, loading } = useAuth();
+export default function Dashboard() {
+  const { user, role, loading, logout } = useAuth();
   const router = useRouter();
 
+  // Security Check: Make sure they are logged in and approved!
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (role === 'pending') {
+        router.push('/waiting-room');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, role, loading, router]);
 
-  if (loading || !user) {
-    return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Loading Dashboard...</div>;
-  }
-
-  const isAdmin = user.email?.toLowerCase().includes('admin');
+  if (loading || !user) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-teal-600" size={32} /></div>;
 
   return (
-    <main className="w-full p-6 min-h-[85vh] bg-slate-50">
-      <div className="mb-8 mt-4 text-center">
-        <h1 className="text-3xl font-serif font-bold text-slate-900">Welcome</h1>
-        <p className="text-slate-500">ICBA Church Portal</p>
+    <div className="min-h-screen bg-slate-50 p-6 pb-24">
+      
+      <header className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">ICBA Dashboard</h1>
+          <p className="text-slate-500 text-sm">Welcome back, {user.displayName || 'Member'}</p>
+        </div>
+        <button onClick={logout} className="p-2 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50" title="Sign Out">
+          <LogOut size={20} />
+        </button>
+      </header>
+
+      {/* CORE MEMBER FEATURES */}
+      <div className="grid grid-cols-1 gap-4 mb-8">
+        <Link href="/directory" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition">
+            <Users size={24} />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-lg">Directory</h2>
+            <p className="text-sm text-slate-500">Search families and members</p>
+          </div>
+        </Link>
+
+        <Link href="/meetings" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition">
+            <Calendar size={24} />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-lg">Meetings</h2>
+            <p className="text-sm text-slate-500">Service schedule and links</p>
+          </div>
+        </Link>
+
+        <Link href="/prayer" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition">
+            <Heart size={24} />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2>
+            <p className="text-sm text-slate-500">Current needs of the assembly</p>
+          </div>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Link href="/directory" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center hover:shadow-md hover:border-teal-400 transition group">
-          <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-teal-600 group-hover:text-white transition">
-            <Users size={28} />
-          </div>
-          <h2 className="font-bold text-slate-800">Directory</h2>
-          <p className="text-xs text-slate-500 mt-1">All Members</p>
-        </Link>
+      {/* ADMIN ONLY SECTION */}
+      {role === 'admin' && (
+        <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">Admin Controls</h3>
+          
+          <div className="grid grid-cols-1 gap-4">
+            <Link href="/approvals" className="bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-700 hover:bg-slate-900 transition flex items-center gap-4 group">
+              <div className="w-12 h-12 bg-slate-700 text-amber-400 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <h2 className="font-bold text-white text-lg">Pending Approvals</h2>
+                <p className="text-sm text-slate-400">Review users, new families & edits</p>
+              </div>
+            </Link>
 
-        <Link href="/meetings" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center hover:shadow-md hover:border-blue-400 transition group">
-          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
-            <Video size={28} />
+            <Link href="/add-family" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 group">
+              <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center group-hover:bg-teal-50 group-hover:text-teal-600 transition">
+                <PlusCircle size={24} />
+              </div>
+              <div>
+                <h2 className="font-bold text-slate-800 text-lg">Add New Family</h2>
+                <p className="text-sm text-slate-500">Directly bypass approval to add a family</p>
+              </div>
+            </Link>
           </div>
-          <h2 className="font-bold text-slate-800">Meetings</h2>
-          <p className="text-xs text-slate-500 mt-1">Zoom Links</p>
-        </Link>
-
-        <Link href="/prayer" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center hover:shadow-md hover:border-rose-400 transition group">
-          <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-rose-600 group-hover:text-white transition">
-            <Heart size={28} />
-          </div>
-          <h2 className="font-bold text-slate-800">Prayer</h2>
-          <p className="text-xs text-slate-500 mt-1">Current Needs</p>
-        </Link>
-
-        <Link href="/sunday-school" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center hover:shadow-md hover:border-indigo-400 transition group">
-          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-600 group-hover:text-white transition">
-            <BookOpen size={28} />
-          </div>
-          <h2 className="font-bold text-slate-800">Sunday School</h2>
-          <p className="text-xs text-slate-500 mt-1">Students & Staff</p>
-        </Link>
-
-        <Link href="/blood-registry" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center hover:shadow-md hover:border-red-400 transition group">
-          <div className="w-14 h-14 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-600 group-hover:text-white transition">
-            <Droplet size={28} />
-          </div>
-          <h2 className="font-bold text-slate-800">Blood Registry</h2>
-          <p className="text-xs text-slate-500 mt-1">Emergency Donors</p>
-        </Link>
-
-        {isAdmin && (
-          <Link href="/admin" className="bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-700 flex flex-col items-center justify-center text-center hover:shadow-md hover:bg-slate-900 transition group">
-            <div className="w-14 h-14 bg-slate-700 text-teal-400 rounded-full flex items-center justify-center mb-4">
-              <ClipboardCheck size={28} />
-            </div>
-            <h2 className="font-bold text-white">Approvals</h2>
-            <p className="text-xs text-slate-400 mt-1">Review Entries</p>
-          </Link>
-        )}
-      </div>
-    </main>
+        </div>
+      )}
+      
+    </div>
   );
 }
