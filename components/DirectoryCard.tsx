@@ -63,13 +63,25 @@ export default function DirectoryCard({
   const { user } = useAuth();
   const [isSharing, setIsSharing] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false); 
-  const formattedDate = lastEdited ? new Date(lastEdited).toLocaleDateString() : 'Unknown';
+
+  // EXACT IST FORMATTING ADDED HERE
+  const formattedDate = lastEdited 
+    ? new Date(lastEdited).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) 
+    : 'Unknown';
 
   const isAdmin = user?.email?.toLowerCase().includes('admin');
 
   const handleSharePDF = async () => {
     setIsSharing(true);
-    await logActivity(user, "Exported/Shared Card", `Exported the directory card for the ${familyName} family.`);
+    await logActivity(user, "Exported/Shared Card", `Exported the directory card for the ${familyName}.`);
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
@@ -82,7 +94,7 @@ export default function DirectoryCard({
       yPos += 15;
       
       pdf.setFontSize(20);
-      pdf.text(`${familyName} Family`, margin, yPos);
+      pdf.text(`${familyName}`, margin, yPos);
       yPos += 10;
 
       if (photoUrl) {
@@ -181,7 +193,7 @@ export default function DirectoryCard({
       const pdfBlob = pdf.output('blob');
       const file = new File([pdfBlob], `${familyName}_Family_Directory.pdf`, { type: 'application/pdf' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${familyName} Family Details` });
+        await navigator.share({ files: [file], title: `${familyName} Details` });
       } else {
         pdf.save(`${familyName}_Family_Directory.pdf`);
       }
@@ -216,7 +228,7 @@ export default function DirectoryCard({
           
           <div className="flex-1 min-w-0">
             <h2 className="text-3xl font-serif font-bold text-slate-900 break-words leading-tight mb-2">
-              {familyName} Family
+              {familyName}
             </h2>
             {/* ONLY DISPLAY STATUS IF INACTIVE */}
             {status === 'Inactive' && (
@@ -249,7 +261,7 @@ export default function DirectoryCard({
 
         {photoUrl ? (
           <div className="relative h-64 w-full bg-slate-100 print:hidden overflow-hidden cursor-pointer group" onClick={() => setIsLightboxOpen(true)}>
-            <img src={photoUrl} alt={`${familyName} Family`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <img src={photoUrl} alt={`${familyName}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
               <span className="bg-black/60 text-white px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition text-sm font-medium backdrop-blur-sm">Click to expand</span>
             </div>
@@ -332,6 +344,7 @@ export default function DirectoryCard({
               </div>
             </div>
           )}
+          {/* FORMATTED DATE USED HERE */}
           <div className="pt-4 border-t border-slate-100 text-xs text-slate-400">Last Modified: {formattedDate}</div>
         </div>
       </motion.div>

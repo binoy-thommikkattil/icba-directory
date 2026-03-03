@@ -66,7 +66,7 @@ export default function SundaySchoolPage() {
         {participants.map((person, idx) => (
           <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-lg text-slate-900 mb-0.5">{person.name}</h3>
-            <p className="text-sm text-slate-500 mb-3">{person.familyName} Family</p>
+            <p className="text-sm text-slate-500 mb-3">{person.familyName}</p>
             
             <div className="flex flex-wrap gap-2">
               {person.tags.map((tag: string) => (

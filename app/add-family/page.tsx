@@ -56,7 +56,7 @@ export default function AddFamily() {
   const [primaryMobile, setPrimaryMobile] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
-  const [members, setMembers] = useState([{ name: '', relationship: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const [members, setMembers] = useState([{ name: '' , bloodGroup: '', willingToDonate: false, tags: '' }]);
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export default function AddFamily() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  const handleAddMember = () => setMembers([...members, { name: '', relationship: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const handleAddMember = () => setMembers([...members, { name: '' , bloodGroup: '', willingToDonate: false, tags: '' }]);
   const handleMemberChange = (index: number, field: string, value: any) => {
     const newMembers = [...members] as any;
     newMembers[index][field] = value;
@@ -204,10 +204,6 @@ export default function AddFamily() {
                     <div className="w-2/3">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
                       <input required placeholder="e.g. John Doe" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 font-bold" value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
-                    </div>
-                    <div className="w-1/3">
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Relation</label>
-                      <input placeholder="e.g. Son" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.relationship} onChange={e => handleMemberChange(index, 'relationship', e.target.value)} />
                     </div>
                   </div>
 

@@ -10,14 +10,14 @@ import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2,
 
 export default function ApprovalsPage() {
   // STEP 2: PULLED userProfile FROM CONTEXT
-  const { user, role, userProfile, loading: authLoading } = useAuth(); 
+  const { user, role, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
-  
+
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [pendingCreations, setPendingCreations] = useState<any[]>([]);
   const [pendingEdits, setPendingEdits] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [reviewItem, setReviewItem] = useState<{ type: 'edit' | 'creation', data: any } | null>(null);
 
   useEffect(() => {
@@ -39,13 +39,13 @@ export default function ApprovalsPage() {
   }, [role]);
 
   // --- STEP 3: LOGGING ADDED TO ALL ACTIONS ---
-  
+
   const handleApproveUser = async (u: any) => {
     await updateDoc(doc(db, 'users', u.id), { role: 'approved' });
     await logActivity(userProfile, 'Approved User Access', `Granted directory access to ${u.email}`);
   };
-  
-  const handleRejectUser = async (u: any) => { 
+
+  const handleRejectUser = async (u: any) => {
     if (confirm("Deny access to this email?")) {
       await deleteDoc(doc(db, 'users', u.id));
       await logActivity(userProfile, 'Denied User Access', `Rejected access request for ${u.email}`);
@@ -54,14 +54,14 @@ export default function ApprovalsPage() {
 
   const handleApproveCreation = async (family: any) => {
     await updateDoc(doc(db, 'members', family.id), { isPendingCreation: false });
-    await logActivity(userProfile, 'Published Family', `Approved new profile for the ${family.familyName} family`);
+    await logActivity(userProfile, 'Published Family', `Approved new profile for the ${family.familyName}`);
     setReviewItem(null);
   };
-  
+
   const handleRejectCreation = async (family: any) => {
     if (confirm("Delete this new family submission completely?")) {
       await deleteDoc(doc(db, 'members', family.id));
-      await logActivity(userProfile, 'Deleted Family Submission', `Discarded new profile submission for the ${family.familyName} family`);
+      await logActivity(userProfile, 'Deleted Family Submission', `Discarded new profile submission for the ${family.familyName}`);
       setReviewItem(null);
     }
   };
@@ -69,14 +69,14 @@ export default function ApprovalsPage() {
   const handleApproveEdit = async (family: any) => {
     if (!family.draftData) return;
     await updateDoc(doc(db, 'members', family.id), { ...family.draftData, hasPendingEdit: false, draftData: null });
-    await logActivity(userProfile, 'Merged Edit', `Approved profile updates for the ${family.familyName} family`);
+    await logActivity(userProfile, 'Merged Edit', `Approved profile updates for the ${family.familyName}`);
     setReviewItem(null);
   };
-  
+
   const handleRejectEdit = async (family: any) => {
     if (confirm("Discard these proposed changes?")) {
       await updateDoc(doc(db, 'members', family.id), { hasPendingEdit: false, draftData: null });
-      await logActivity(userProfile, 'Discarded Edit', `Rejected profile updates for the ${family.familyName} family`);
+      await logActivity(userProfile, 'Discarded Edit', `Rejected profile updates for the ${family.familyName}`);
       setReviewItem(null);
     }
   };
@@ -90,7 +90,7 @@ export default function ApprovalsPage() {
       <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
       </Link>
-      
+
       <div className="mb-8">
         <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2">Admin Approvals</h1>
         <p className="text-slate-500 text-sm">Review access requests and directory updates.</p>
@@ -122,7 +122,7 @@ export default function ApprovalsPage() {
             {pendingCreations.map(family => (
               <div key={family.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center gap-4">
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold text-slate-900 truncate">{family.familyName} Family</p>
+                  <p className="font-bold text-slate-900 truncate">{family.familyName}</p>
                   <p className="text-sm text-slate-500 truncate">{family.members?.length || 0} members listed</p>
                 </div>
                 <button onClick={() => setReviewItem({ type: 'creation', data: family })} className="shrink-0 flex items-center justify-center bg-blue-50 text-blue-700 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-100 border border-blue-200">
@@ -141,7 +141,7 @@ export default function ApprovalsPage() {
           <div className="space-y-3">
             {pendingEdits.map(family => (
               <div key={family.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center gap-4">
-                <div className="min-w-0 flex-1"><p className="font-bold text-slate-900 truncate">{family.familyName} Family</p><p className="text-sm text-slate-500 truncate">Proposed updates waiting for review.</p></div>
+                <div className="min-w-0 flex-1"><p className="font-bold text-slate-900 truncate">{family.familyName}</p><p className="text-sm text-slate-500 truncate">Proposed updates waiting for review.</p></div>
                 <button onClick={() => setReviewItem({ type: 'edit', data: family })} className="shrink-0 flex items-center justify-center bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-100 border border-indigo-200">
                   <Search size={16} className="mr-1.5" /> Review
                 </button>
@@ -171,6 +171,20 @@ export default function ApprovalsPage() {
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Contact Info</h3>
                 <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
+                  <div className="flex border-b border-slate-100 pb-2">
+                    <span className="font-bold text-slate-700 w-1/3">Submitted</span>
+                    <span className="text-slate-600">
+                      {activeData.lastEdited || activeData.createdAt ? new Date(activeData.lastEdited || activeData.createdAt).toLocaleString('en-IN', {
+                        timeZone: 'Asia/Kolkata',
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      }) : 'N/A'}
+                    </span>
+                  </div>
                   <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Status</span><span className="text-slate-600">{activeData.status || 'Active'}</span></div>
                   <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Mobile</span><span className="text-slate-600">{activeData.primaryMobile || '-'}</span></div>
                   <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Current Addr</span><span className="text-slate-600">{activeData.currentAddress || '-'}</span></div>

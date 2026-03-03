@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function Dashboard() {
   const { user, role, loading } = useAuth();
@@ -17,7 +19,71 @@ export default function Dashboard() {
   }, [user, role, loading, router]);
 
   if (loading || !user) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-teal-600" size={32} /></div>;
+  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
+    if (!confirm(`Are you sure you want to bulk import from ${file.name}?`)) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target?.result as string;
+      const rows = text.split('\n').slice(1).filter(row => row.trim() !== ''); 
+      
+      const familiesMap = new Map();
+
+      for (const row of rows) {
+        // Splits the 11 columns accurately
+        const [
+          familyName, primaryMobile, currentAddress, nativeAddress, 
+          homeAssembly, commendedAssembly, notes, 
+          memberName, bloodGroup, willingToDonate, tags
+        ] = row.split(',').map(s => s?.trim() || '');
+
+        if (!primaryMobile) continue; 
+
+        if (!familiesMap.has(primaryMobile)) {
+          familiesMap.set(primaryMobile, {
+            familyName, 
+            primaryMobile, 
+            currentAddress, 
+            nativeAddress, 
+            homeAssembly, 
+            commendedAssembly, 
+            notes, 
+            status: 'Active',
+            members: [],
+            submittedBy: "Bulk Admin Upload",
+            lastEdited: new Date().toISOString(),
+            isPendingCreation: false,
+            hasPendingEdit: false
+          });
+        }
+
+        if (memberName) {
+          familiesMap.get(primaryMobile).members.push({
+            name: memberName,
+            bloodGroup: bloodGroup,
+            willingToDonate: willingToDonate.toLowerCase() === 'yes' || willingToDonate.toLowerCase() === 'true',
+            tags: tags ? tags.split('-').map(t => t.trim()) : []
+          });
+        }
+      }
+
+      let successCount = 0;
+      for (const [_, familyData] of familiesMap) {
+        try {
+          // Import from firebase/firestore
+          await addDoc(collection(db, 'members'), familyData);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to upload family: ${familyData.familyName}`, err);
+        }
+      }
+      alert(`Success! Grouped and uploaded ${successCount} distinct families.`);
+    };
+    reader.readAsText(file);
+  };
   return (
     <div className="min-h-screen bg-slate-50 p-6 pb-24">
       <header className="mb-8">
@@ -37,8 +103,13 @@ export default function Dashboard() {
         </Link>
 
         <Link href="/prayer" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition"><HandHeart size={24} strokeWidth={1.5} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2><p className="text-sm text-slate-500">Current needs of the assembly</p></div>
+          <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center group-hover:bg-rose-600 transition">
+            <span className="text-2xl" role="img" aria-label="praying hands">🙏</span>
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2>
+            <p className="text-sm text-slate-500">Current needs of the assembly</p>
+          </div>
         </Link>
 
         <Link href="/blood-registry" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 transition flex items-center gap-4 group">
@@ -63,7 +134,10 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-slate-700 text-amber-400 rounded-xl flex items-center justify-center group-hover:scale-110 transition"><ShieldCheck size={24} /></div>
               <div><h2 className="font-bold text-white text-lg">Pending Approvals</h2><p className="text-sm text-slate-400">Review users, new families & edits</p></div>
             </Link>
-
+            <label className="bg-slate-800 text-white p-4 rounded-2xl shadow-md font-bold hover:bg-slate-900 transition flex items-center justify-center w-full mb-4 cursor-pointer">
+              <input type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
+              📊 Bulk Upload Members (CSV)
+            </label>
             <Link href="/manage-users" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
               <div className="w-12 h-12 bg-slate-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-50 transition"><UsersIcon size={24} /></div>
               <div><h2 className="font-bold text-slate-800 text-lg">Manage Users</h2><p className="text-sm text-slate-500">View accounts and revoke access</p></div>

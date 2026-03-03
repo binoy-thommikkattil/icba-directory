@@ -32,12 +32,12 @@ const getBase64ImageFromUrl = async (imageUrl: string): Promise<{ dataUrl: strin
 
 export default function DirectoryPage() {
   const [families, setFamilies] = useState<any[]>([]);
-  const [dbLoading, setDbLoading] = useState(true); 
+  const [dbLoading, setDbLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const { user, loading: authLoading } = useAuth(); 
+
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Check if current user is admin to determine visibility of Inactive members
@@ -72,14 +72,20 @@ export default function DirectoryPage() {
   }, [families]);
 
   const filteredIndividuals = useMemo(() => {
-    return allIndividuals.filter(ind => {
+    // 1. First, apply the standard filters (admin/search)
+    const matchedIndividuals = allIndividuals.filter(ind => {
       // RULE: If user is not an admin, immediately hide Inactive members
       if (!isAdmin && ind.status === 'Inactive') return false;
 
       // RULE: Match search term
       return ind.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             ind.familyName.toLowerCase().includes(searchTerm.toLowerCase());
+        ind.familyName.toLowerCase().includes(searchTerm.toLowerCase());
     });
+
+    // 2. Then, filter out exact duplicate names
+    return matchedIndividuals.filter((ind, index, self) =>
+      index === self.findIndex((m) => m.name.toLowerCase() === ind.name.toLowerCase())
+    );
   }, [allIndividuals, searchTerm, isAdmin]);
 
   const handleSwipeLeft = () => {
@@ -120,7 +126,7 @@ export default function DirectoryPage() {
           pdf.addPage();
           yPos = 30;
         }
-        pdf.text(`${index + 1}. ${family.familyName} Family`, margin, yPos);
+        pdf.text(`${index + 1}. ${family.familyName}`, margin, yPos);
         yPos += 7;
       });
 
@@ -130,16 +136,16 @@ export default function DirectoryPage() {
 
         pdf.addPage();
         yPos = 30;
-        
+
         pdf.setFontSize(20);
-        pdf.text(`${family.familyName} Family`, margin, yPos);
+        pdf.text(`${family.familyName}`, margin, yPos);
         yPos += 10;
 
         if (family.photoUrl) {
           const imgData = await getBase64ImageFromUrl(family.photoUrl);
           if (imgData) {
-            let printWidth = 80; 
-            let printHeight = 60; 
+            let printWidth = 80;
+            let printHeight = 60;
             const imgRatio = imgData.width / imgData.height;
             const targetRatio = printWidth / printHeight;
 
@@ -150,7 +156,7 @@ export default function DirectoryPage() {
             }
 
             pdf.addImage(imgData.dataUrl, 'JPEG', margin, yPos, printWidth, printHeight);
-            yPos += printHeight + 12; 
+            yPos += printHeight + 12;
           }
         }
 
@@ -282,16 +288,20 @@ export default function DirectoryPage() {
           </div>
 
           <div className="space-y-3 pb-20">
-            {filteredIndividuals.map((ind, index) => (
-              <button
-                key={`${ind.familyId}-${index}`}
-                onClick={() => setSelectedFamilyId(ind.familyId)}
-                className="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex text-left"
-              >
-                {/* PURE MINIMALISM: Nothing but the member's name */}
-                <h3 className="font-serif font-bold text-lg text-slate-900 truncate">{ind.name}</h3>
-              </button>
-            ))}
+            {/* This filter removes any member whose name matches one already in the list, 
+              preventing cross-household duplications from showing up.
+            */}
+            {filteredIndividuals
+              .filter((ind, index, self) => index === self.findIndex((m) => m.name.toLowerCase() === ind.name.toLowerCase()))
+              .map((ind, index) => (
+                <button
+                  key={`${ind.familyId}-${index}`}
+                  onClick={() => setSelectedFamilyId(ind.familyId)}
+                  className="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex text-left"
+                >
+                  <h3 className="font-serif font-bold text-lg text-slate-900 truncate">{ind.name}</h3>
+                </button>
+              ))}
           </div>
         </div>
       ) : (

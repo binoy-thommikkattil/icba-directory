@@ -101,7 +101,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="font-serif font-bold text-2xl text-slate-900 mb-2">
-                    {req.isPendingCreation ? req.familyName : req.draftData?.familyName || req.familyName} Family
+                    {req.isPendingCreation ? req.familyName : req.draftData?.familyName || req.familyName}
                   </h3>
                   <div className="flex items-center gap-3">
                     {req.isPendingCreation ? (
