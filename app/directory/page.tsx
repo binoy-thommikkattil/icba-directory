@@ -85,7 +85,7 @@ export default function DirectoryPage() {
             const tagStr = t.toLowerCase();
             if (filterTag === 'youth' && (tagStr.includes('youth') || tagStr.includes('young family'))) return true;
             if (filterTag === 'bachelor' && (tagStr.includes('bachelor') || tagStr.includes('spinster'))) return true;
-            if (filterTag === 'sunday-school' && tagStr.includes('sunday school')) return true;
+            if (filterTag === 'sunday-school' && (tagStr.includes('sunday school') || tagStr.includes('sundayschool'))) return true;
             return false;
         });
         if (!hasTag) return false;

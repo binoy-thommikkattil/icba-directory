@@ -1,16 +1,16 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
-import Link from 'next/link';
-import { ArrowLeft, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import SubDirectory from '@/components/SubDirectory';
+import { Loader2 } from 'lucide-react';
 
 export default function SundaySchoolPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [families, setFamilies] = useState<any[]>([]);
+  const [taggedMembers, setTaggedMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -19,65 +19,58 @@ export default function SundaySchoolPage() {
 
   useEffect(() => {
     if (!user) return;
+    
+    // Fetch active families only
     const q = query(collection(db, 'members'), where('isPendingCreation', '==', false), where('status', '==', 'Active'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setFamilies(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      // Added "as any" to prevent TypeScript property errors
+      const allFamilies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      let matches: any[] = [];
+
+      allFamilies.forEach(family => {
+        family.members?.forEach((member: any) => {
+          if (member.tags && member.tags.length > 0) {
+            // Find anyone with "Sunday School" in their custom tags
+            const isSundaySchool = member.tags.some((t: string) => t.toLowerCase().includes('sunday school'));
+            
+            if (isSundaySchool) {
+              matches.push({
+                familyId: family.id,
+                familyName: family.familyName,
+                name: member.name,
+                // fullFamilyData is required so the DirectoryCard can open properly
+                fullFamilyData: { id: family.id, ...family } 
+              });
+            }
+          }
+        });
+      });
+
+      // Deduplicate individuals in case someone accidentally added them twice
+      const uniqueMatches = matches.filter((ind, index, self) =>
+        index === self.findIndex((m) => m.name.toLowerCase() === ind.name.toLowerCase())
+      );
+
+      setTaggedMembers(uniqueMatches.sort((a, b) => a.name.localeCompare(b.name)));
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, [user]);
 
-  // Find anyone with "Sunday School" (or similar) in their custom tags
-  const participants = useMemo(() => {
-    let list: any[] = [];
-    families.forEach(family => {
-      family.members?.forEach((ind: any) => {
-        if (ind.tags && ind.tags.length > 0) {
-          const isSundaySchool = ind.tags.some((t: string) => t.toLowerCase().includes('sunday school'));
-          if (isSundaySchool) {
-            list.push({ ...ind, familyName: family.familyName });
-          }
-        }
-      });
-    });
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [families]);
-
-  if (authLoading || isLoading || !user) return <div className="p-8 text-center text-slate-500">Loading records...</div>;
+  if (authLoading || isLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-slate-500">
+        <Loader2 className="animate-spin mr-2" /> Loading records...
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50">
-      <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
-        <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
-      </Link>
-      
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2 flex items-center">
-          <BookOpen size={28} className="text-indigo-500 mr-3" /> Sunday School
-        </h1>
-        <p className="text-slate-500 text-sm">Directory of students and teachers.</p>
-      </div>
-
-      <div className="space-y-4">
-        {participants.length === 0 && (
-          <p className="text-slate-500 text-center py-10 bg-white rounded-2xl border border-slate-200">No active Sunday School members found. Add tags like "Sunday School Student" to member profiles.</p>
-        )}
-
-        {participants.map((person, idx) => (
-          <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-lg text-slate-900 mb-0.5">{person.name}</h3>
-            <p className="text-sm text-slate-500 mb-3">{person.familyName}</p>
-            
-            <div className="flex flex-wrap gap-2">
-              {person.tags.map((tag: string) => (
-                <span key={tag} className="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md border border-indigo-100">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <SubDirectory 
+      pageTitle="Sunday School" 
+      pageDescription="Directory and Noticeboard for students and teachers. To add a member here, ensure they have the 'Sunday School' tag in their profile." 
+      category="sunday-school" 
+      members={taggedMembers} 
+    />
   );
 }
