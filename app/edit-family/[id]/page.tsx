@@ -179,7 +179,8 @@ function EditFamilyContent() {
       safePhotoUrl = await autoCompressImage(safePhotoUrl);
     }
 
-    const payload = {
+    // Capture all the new form data into a variable (do not add hasPendingEdit yet)
+    const formData = {
       familyName: primaryMember.name,
       primaryMobile: primaryMember.mobile,
       currentAddress,
@@ -193,19 +194,28 @@ function EditFamilyContent() {
         ...m,
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : m.tags
       })),
-      lastEdited: new Date().toISOString(),
-
-      // NEW: Flag this as a pending edit if a non-admin submits it!
-      hasPendingEdit: !isAdmin
+      lastEdited: new Date().toISOString()
     };
 
     try {
-      await updateDoc(doc(db, 'members', familyId), payload);
-      alert(isAdmin ? 'Family details updated successfully!' : 'Edit submitted for admin approval!');
+      if (isAdmin) {
+        // Admins overwrite the live data immediately and clear any drafts
+        await updateDoc(doc(db, 'members', familyId), {
+          ...formData,
+          hasPendingEdit: false,
+          draftData: null
+        });
+        alert('Family details updated successfully!');
+      } else {
+        // Regular members save to a draft field and flag it for review
+        await updateDoc(doc(db, 'members', familyId), {
+          hasPendingEdit: true,
+          draftData: formData
+        });
+        alert('Edit submitted for admin approval!');
+      }
       router.push('/directory');
-    }
-
-    catch (error) {
+    } catch (error) {
       console.error(error);
       alert('Failed to update details. Please try again.');
     } finally {
