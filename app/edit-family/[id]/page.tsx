@@ -46,11 +46,11 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
 function EditFamilyContent() {
   const { user, role } = useAuth();
   const router = useRouter();
-  
+
   // NEW: Grab both routing hooks to make it bulletproof
   const searchParams = useSearchParams();
   const params = useParams();
-  
+
   // NEW: Try to find the ID from either a dynamic route (/edit/123) OR query string (?id=123)
   const familyId = (params?.id as string) || searchParams.get('id');
 
@@ -97,17 +97,17 @@ function EditFamilyContent() {
 
           // CRITICAL: Retrofit older data to the new "Primary Member First" format
           if (fetchedMembers.length > 0) {
-            
+
             // Failsafe 1: Ensure first member has a name
             if (!fetchedMembers[0].name) {
-               fetchedMembers[0].name = data.familyName || '';
+              fetchedMembers[0].name = data.familyName || '';
             }
-            
+
             // Failsafe 2: Ensure first member has a mobile number
             if (!fetchedMembers[0].mobile) {
               fetchedMembers[0].mobile = data.primaryMobile || '';
             }
-            
+
             // Ensure all properties exist so inputs don't crash
             fetchedMembers = fetchedMembers.map((m: any) => ({
               ...m,
@@ -121,7 +121,7 @@ function EditFamilyContent() {
             // Fallback if somehow there are no members in the array at all
             fetchedMembers = [{ name: data.familyName || '', mobile: data.primaryMobile || '', bloodGroup: '', willingToDonate: false, tags: '' }];
           }
-          
+
           setMembers(fetchedMembers);
         } else {
           console.error("Family document does not exist!");
@@ -180,27 +180,32 @@ function EditFamilyContent() {
     }
 
     const payload = {
-      familyName: primaryMember.name, 
+      familyName: primaryMember.name,
       primaryMobile: primaryMember.mobile,
-      currentAddress, 
-      nativeAddress, 
-      homeAssembly, 
+      currentAddress,
+      nativeAddress,
+      homeAssembly,
       commendedAssembly,
-      photoUrl: safePhotoUrl, 
-      status, 
+      photoUrl: safePhotoUrl,
+      status,
       notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : m.tags
       })),
-      lastEdited: new Date().toISOString()
+      lastEdited: new Date().toISOString(),
+
+      // NEW: Flag this as a pending edit if a non-admin submits it!
+      hasPendingEdit: !isAdmin
     };
 
     try {
       await updateDoc(doc(db, 'members', familyId), payload);
-      alert('Family details updated successfully!');
+      alert(isAdmin ? 'Family details updated successfully!' : 'Edit submitted for admin approval!');
       router.push('/directory');
-    } catch (error) {
+    }
+
+    catch (error) {
       console.error(error);
       alert('Failed to update details. Please try again.');
     } finally {
@@ -218,13 +223,13 @@ function EditFamilyContent() {
 
   // If no ID was found after fetching completes, show an error
   if (!familyId) {
-     return (
-        <div className="flex flex-col min-h-screen items-center justify-center bg-slate-50 p-6 text-center">
-           <h2 className="text-xl font-bold text-slate-800 mb-2">Error: Family ID Missing</h2>
-           <p className="text-slate-500 mb-6">We couldn't find the family you are trying to edit.</p>
-           <Link href="/directory" className="px-5 py-2.5 bg-teal-600 text-white rounded-lg font-bold">Return to Directory</Link>
-        </div>
-     );
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center bg-slate-50 p-6 text-center">
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Error: Family ID Missing</h2>
+        <p className="text-slate-500 mb-6">We couldn't find the family you are trying to edit.</p>
+        <Link href="/directory" className="px-5 py-2.5 bg-teal-600 text-white rounded-lg font-bold">Return to Directory</Link>
+      </div>
+    );
   }
 
   return (
@@ -253,7 +258,7 @@ function EditFamilyContent() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        
+
         {isAdmin && (
           <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
             <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
@@ -301,7 +306,7 @@ function EditFamilyContent() {
           <div className="space-y-4 pt-2">
             {members.map((member, index) => (
               <div key={index} className={`flex gap-3 items-start relative bg-white p-4 rounded-xl border shadow-sm ${index === 0 ? 'border-teal-300 pt-6' : 'border-slate-200'}`}>
-                
+
                 {index === 0 && (
                   <span className="absolute -top-3 left-4 bg-teal-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
                     Primary Member
@@ -318,13 +323,13 @@ function EditFamilyContent() {
                       <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
                         {index === 0 ? 'Primary Mobile *' : 'Personal Mobile'}
                       </label>
-                      <input 
-                        required={index === 0} 
-                        type="tel" 
-                        placeholder="e.g. 9876543210" 
-                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`} 
-                        value={member.mobile || ''} 
-                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)} 
+                      <input
+                        required={index === 0}
+                        type="tel"
+                        placeholder="e.g. 9876543210"
+                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`}
+                        value={member.mobile || ''}
+                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)}
                       />
                     </div>
                   </div>
@@ -386,7 +391,7 @@ function EditFamilyContent() {
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-teal-700 text-white font-bold p-4 rounded-xl shadow-md hover:bg-teal-800 transition disabled:opacity-50">
-          {loading ? 'Saving Updates...' : 'Save Changes'}
+          {loading ? 'Processing...' : (isAdmin ? 'Save Changes' : 'Submit Edit for Approval')}
         </button>
       </form>
     </div>
