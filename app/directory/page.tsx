@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import DirectoryCard, { Individual } from '@/components/DirectoryCard';
@@ -30,7 +30,7 @@ const getBase64ImageFromUrl = async (imageUrl: string): Promise<{ dataUrl: strin
   });
 };
 
-export default function DirectoryPage() {
+function DirectoryContent() {
   const [families, setFamilies] = useState<any[]>([]);
   const [dbLoading, setDbLoading] = useState(true); 
   const [isExporting, setIsExporting] = useState(false);
@@ -371,5 +371,17 @@ export default function DirectoryPage() {
         </div>
       )}
     </main>
+  );
+}
+// This is your new default export that safely wraps the directory content
+export default function DirectoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center font-bold text-slate-500">
+        <Loader2 size={24} className="mr-2 animate-spin" /> Loading Directory...
+      </div>
+    }>
+      <DirectoryContent />
+    </Suspense>
   );
 }
