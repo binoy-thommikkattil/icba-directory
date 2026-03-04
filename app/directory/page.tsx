@@ -84,7 +84,7 @@ function DirectoryContent() {
         const hasTag = ind.tags?.some((t: string) => {
             const tagStr = t.toLowerCase();
             if (filterTag === 'youth' && (tagStr.includes('youth') || tagStr.includes('young family'))) return true;
-            if (filterTag === 'bachelor' && (tagStr.includes('bachelor') || tagStr.includes('spinster'))) return true;
+            if (filterTag === 'bachelor' && (tagStr.includes('bachelor') || tagStr.includes('unmarried') || tagStr.includes('spinster'))) return true;
             if (filterTag === 'sunday-school' && (tagStr.includes('sunday school') || tagStr.includes('sundayschool'))) return true;
             return false;
         });
@@ -311,7 +311,7 @@ function DirectoryContent() {
           <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">{pageTitle}</h1>
 
           {/* Helper text for tagged pages */}
-          {filterTag === 'bachelor' && <p className="text-sm text-slate-500 mb-6">Showing members with tags 'bachelor' or 'spinster'.</p>}
+          {filterTag === 'bachelor' && <p className="text-sm text-slate-500 mb-6">Showing members with tags 'bachelor' or 'unmarried'.</p>}
           {filterTag === 'youth' && <p className="text-sm text-slate-500 mb-6">Showing members with tags 'youth' or 'young family'.</p>}
           {filterTag === 'sunday-school' && <p className="text-sm text-slate-500 mb-6">Showing members with tag 'sunday school'.</p>}
 

@@ -21,7 +21,7 @@ export default function BachelorsPage() {
                     // Check if this member has the required tags
                     const hasTag = member.tags?.some((t: string) => {
                         const tag = t.toLowerCase();
-                        return tag.includes('bachelor') || tag.includes('spinster');
+                        return tag.includes('bachelor') || tag.includes('spinster') || tag.includes('unmarried');
                     });
 
                     if (hasTag) {
@@ -50,8 +50,8 @@ export default function BachelorsPage() {
 
     return (
         <SubDirectory
-            pageTitle="Bachelors & Spinsters"
-            pageDescription="Members currently tagged as 'bachelor' or 'spinster'."
+            pageTitle="Bachelor Meeting Members"
+            pageDescription="Members currently tagged as 'bachelor' or 'unmarried'."
             category="bachelors"
             members={taggedMembers}
         />

@@ -119,7 +119,7 @@ export default function Dashboard() {
 
         <Link href="/bachelors" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Bachelors</h2><p className="text-sm text-slate-500">Bachelors & Spinsters</p></div>
+          <div><h2 className="font-bold text-slate-800 text-lg">Bachelor Meeting Members</h2><p className="text-sm text-slate-500">Bachelor Meeting Members</p></div>
         </Link>
 
         <Link href="/sunday-school" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-400 transition flex items-center gap-4 group">
