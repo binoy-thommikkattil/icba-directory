@@ -33,24 +33,26 @@ export default function Dashboard() {
       const familiesMap = new Map();
 
       for (const row of rows) {
-        // Splits the 11 columns accurately
+        // We assign default empty strings right here during destructuring
         const [
-          familyName, primaryMobile, currentAddress, nativeAddress,
-          homeAssembly, commendedAssembly, notes,
-          memberName, bloodGroup, willingToDonate, tags
+          familyName = '', primaryMobile = '', currentAddress = '', nativeAddress = '',
+          homeAssembly = '', commendedAssembly = '', notes = '',
+          memberName = '', bloodGroup = '', willingToDonate = '', tags = ''
         ] = row.split(',').map(s => s?.trim() || '');
 
+        // Skip rows that don't at least have a mobile number
         if (!primaryMobile) continue;
 
         if (!familiesMap.has(primaryMobile)) {
           familiesMap.set(primaryMobile, {
-            familyName,
-            primaryMobile,
-            currentAddress,
-            nativeAddress,
-            homeAssembly,
-            commendedAssembly,
-            notes,
+            // Using || '' ensures absolutely NO undefined values reach Firebase
+            familyName: familyName || '',
+            primaryMobile: primaryMobile || '',
+            currentAddress: currentAddress || '',
+            nativeAddress: nativeAddress || '',
+            homeAssembly: homeAssembly || '',
+            commendedAssembly: commendedAssembly || '',
+            notes: notes || '',
             status: 'Active',
             members: [],
             submittedBy: "Bulk Admin Upload",
@@ -62,8 +64,8 @@ export default function Dashboard() {
 
         if (memberName) {
           familiesMap.get(primaryMobile).members.push({
-            name: memberName,
-            bloodGroup: bloodGroup,
+            name: memberName || '',
+            bloodGroup: bloodGroup || '',
             willingToDonate: willingToDonate.toLowerCase() === 'yes' || willingToDonate.toLowerCase() === 'true',
             tags: tags ? tags.split('-').map(t => t.trim()) : []
           });
@@ -73,13 +75,15 @@ export default function Dashboard() {
       let successCount = 0;
       for (const [_, familyData] of familiesMap) {
         try {
-          // Import from firebase/firestore
           await addDoc(collection(db, 'members'), familyData);
           successCount++;
         } catch (err) {
           console.error(`Failed to upload family: ${familyData.familyName}`, err);
         }
       }
+
+      // Clear the file input so you can upload the same file again if needed
+      event.target.value = '';
       alert(`Success! Grouped and uploaded ${successCount} distinct families.`);
     };
     reader.readAsText(file);

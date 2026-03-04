@@ -57,7 +57,7 @@ export default function BloodRegistryPage() {
       <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
       </Link>
-      
+
       <div className="mb-6">
         <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2 flex items-center">
           <Droplet size={28} className="text-red-500 mr-2" /> Blood Registry
@@ -71,11 +71,10 @@ export default function BloodRegistryPage() {
           <button
             key={group as string}
             onClick={() => setFilterGroup(group as string)}
-            className={`px-4 py-2 rounded-full text-sm font-bold border transition ${
-              filterGroup === group 
-                ? 'bg-red-500 text-white border-red-600 shadow-sm' 
+            className={`px-4 py-2 rounded-full text-sm font-bold border transition ${filterGroup === group
+                ? 'bg-red-500 text-white border-red-600 shadow-sm'
                 : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
-            }`}
+              }`}
           >
             {group as string}
           </button>
@@ -88,8 +87,9 @@ export default function BloodRegistryPage() {
         )}
 
         {filteredDonors.map((donor, idx) => {
-          const sanitizedPhone = donor.primaryMobile?.replace(/\D/g, '');
-          
+          const rawPhone = donor.mobile || donor.primaryMobile;
+          const sanitizedPhone = rawPhone?.replace(/\D/g, '');
+
           return (
             <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
               <div className="flex justify-between items-start mb-4">
@@ -101,7 +101,7 @@ export default function BloodRegistryPage() {
                   {donor.bloodGroup}
                 </span>
               </div>
-              
+
               {donor.primaryMobile && (
                 <div className="flex gap-3 pt-4 border-t border-slate-100">
                   <a href={`tel:${sanitizedPhone}`} className="flex-1 flex justify-center items-center bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition">

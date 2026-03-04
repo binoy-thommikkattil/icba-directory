@@ -20,7 +20,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> 
   canvas.height = pixelCrop.height * scale;
   const ctx = canvas.getContext('2d');
   ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.8); 
+  return canvas.toDataURL('image/jpeg', 0.8);
 };
 
 const autoCompressImage = async (base64Str: string): Promise<string> => {
@@ -29,14 +29,14 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
     const img = new window.Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 400; 
+      const MAX_WIDTH = 400;
       let scale = 1;
       if (img.width > MAX_WIDTH) scale = MAX_WIDTH / img.width;
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = () => resolve(base64Str);
     img.src = base64Str;
@@ -47,10 +47,10 @@ export default function AddFamily() {
   const { user, role, userProfile } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  
+
   // DETERMINE IF USER IS ADMIN TO BYPASS APPROVAL
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().includes('admin');
-  
+
   const [familyName, setFamilyName] = useState('');
   const [currentAddress, setCurrentAddress] = useState('');
   const [nativeAddress, setNativeAddress] = useState('');
@@ -59,7 +59,7 @@ export default function AddFamily() {
   const [primaryMobile, setPrimaryMobile] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
-  const [members, setMembers] = useState([{ name: '' , bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export default function AddFamily() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  const handleAddMember = () => setMembers([...members, { name: '' , bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const handleAddMember = () => setMembers([...members, { name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
   const handleMemberChange = (index: number, field: string, value: any) => {
     const newMembers = [...members] as any;
     newMembers[index][field] = value;
@@ -91,7 +91,7 @@ export default function AddFamily() {
     if (!rawImage || !croppedAreaPixels) return;
     const croppedImageBase64 = await getCroppedImg(rawImage, croppedAreaPixels);
     setPhotoUrl(croppedImageBase64);
-    setRawImage(null); 
+    setRawImage(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,7 +104,7 @@ export default function AddFamily() {
     }
 
     const payload = {
-      familyName, currentAddress, nativeAddress, homeAssembly, commendedAssembly, 
+      familyName, currentAddress, nativeAddress, homeAssembly, commendedAssembly,
       primaryMobile, photoUrl: safePhotoUrl, status, notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
@@ -112,17 +112,17 @@ export default function AddFamily() {
       })),
       lastEdited: new Date().toISOString(),
       submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User',
-      
+
       // FIXED: If admin, bypass pending state
-      isPendingCreation: !isAdmin, 
-      
+      isPendingCreation: !isAdmin,
+
       hasPendingEdit: false,
       draftData: null
     };
 
     try {
       await addDoc(collection(db, 'members'), payload);
-      
+
       // Provide dynamic feedback based on role
       if (isAdmin) {
         alert('Family added successfully to the directory!');
@@ -144,9 +144,9 @@ export default function AddFamily() {
       <Link href={isAdmin ? "/" : "/login"} className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> {isAdmin ? "Back to Dashboard" : "Back to Login"}
       </Link>
-      
+
       <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">Submit Family Details</h1>
-      
+
       {rawImage && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
           <div className="relative flex-1">
@@ -177,12 +177,12 @@ export default function AddFamily() {
           )}
           <label className={`flex items-center justify-center w-full p-4 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-white hover:bg-slate-50 transition ${photoUrl ? 'mt-4' : 'h-32 flex-col'}`}>
             {photoUrl ? (
-               <div className="flex items-center text-teal-700 font-bold"><Upload className="w-5 h-5 mr-2" /> Change Photo</div>
+              <div className="flex items-center text-teal-700 font-bold"><Upload className="w-5 h-5 mr-2" /> Change Photo</div>
             ) : (
-               <div className="flex flex-col items-center justify-center">
-                 <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                 <p className="text-sm text-slate-500 font-medium">Click to upload photo</p>
-               </div>
+              <div className="flex flex-col items-center justify-center">
+                <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                <p className="text-sm text-slate-500 font-medium">Click to upload photo</p>
+              </div>
             )}
             <input type="file" accept="image/*" className="hidden" onChange={onFileChange} />
           </label>
@@ -198,24 +198,44 @@ export default function AddFamily() {
             <label className="block text-sm font-bold text-slate-700 mb-1">Primary Mobile *</label>
             <input required type="tel" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={primaryMobile} onChange={e => setPrimaryMobile(e.target.value)} />
           </div>
+          
+          {/* NEW: Admin-only Status Field */}
+          {isAdmin && (
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
+              <select
+                className="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white"
+                value={status}
+                onChange={e => setStatus(e.target.value)}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <div className="flex justify-between items-center border-b border-slate-200 pb-2">
             <h2 className="font-bold text-slate-800">Family Members *</h2>
             <button type="button" onClick={handleAddMember} className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-md hover:bg-teal-700 flex items-center">
-              <Plus size={14} className="mr-1"/> Add Person
+              <Plus size={14} className="mr-1" /> Add Person
             </button>
           </div>
           <div className="space-y-4">
             {members.map((member, index) => (
               <div key={index} className="flex gap-3 items-start relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                
+
                 <div className="flex-1 space-y-4">
+                  {/* Name & Mobile Row */}
                   <div className="flex gap-3">
-                    <div className="w-2/3">
+                    <div className="w-1/2">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
                       <input required placeholder="e.g. John Doe" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 font-bold" value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                    </div>
+                    <div className="w-1/2">
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Personal Mobile</label>
+                      <input type="tel" placeholder="e.g. 9876543210" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.mobile || ''} onChange={e => handleMemberChange(index, 'mobile', e.target.value)} />
                     </div>
                   </div>
 
@@ -242,7 +262,7 @@ export default function AddFamily() {
                 </div>
 
                 {members.length > 1 && (
-                  <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18}/></button>
+                  <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
                 )}
               </div>
             ))}

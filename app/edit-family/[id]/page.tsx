@@ -58,7 +58,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
   const [primaryMobile, setPrimaryMobile] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
-  const [members, setMembers] = useState([{ name: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
     if (user) fetchFamily();
   }, [resolvedParams.id, user]);
 
-  const handleAddMember = () => setMembers([...members, { name: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const handleAddMember = () => setMembers([...members, { name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
   const handleMemberChange = (index: number, field: string, value: any) => {
     const newMembers = [...members] as any;
     newMembers[index][field] = value;
@@ -259,10 +259,15 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
 
                 <div className="flex-1 space-y-4">
                   {/* Name & Relation Row */}
+                  {/* Name & Mobile Row */}
                   <div className="flex gap-3">
-                    <div className="w-2/3">
+                    <div className="w-1/2">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
                       <input required placeholder="e.g. John Doe" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 font-bold" value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                    </div>
+                    <div className="w-1/2">
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Personal Mobile</label>
+                      <input type="tel" placeholder="e.g. 9876543210" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.mobile || ''} onChange={e => handleMemberChange(index, 'mobile', e.target.value)} />
                     </div>
                   </div>
 
