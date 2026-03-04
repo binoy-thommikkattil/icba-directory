@@ -44,9 +44,12 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
 };
 
 export default function AddFamily() {
-  const { user, role, userProfile } = useAuth(); // ADDED userProfile
+  const { user, role, userProfile } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  
+  // DETERMINE IF USER IS ADMIN TO BYPASS APPROVAL
+  const isAdmin = role === 'admin' || user?.email?.toLowerCase().includes('admin');
   
   const [familyName, setFamilyName] = useState('');
   const [currentAddress, setCurrentAddress] = useState('');
@@ -108,28 +111,38 @@ export default function AddFamily() {
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
       })),
       lastEdited: new Date().toISOString(),
-      // UPDATED TO USE PROFILE NAME
       submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User',
-      isPendingCreation: true, 
+      
+      // FIXED: If admin, bypass pending state
+      isPendingCreation: !isAdmin, 
+      
       hasPendingEdit: false,
       draftData: null
     };
 
     try {
       await addDoc(collection(db, 'members'), payload);
-      alert('Details submitted! An admin will review and approve your submission shortly.');
-      router.push('/login');
+      
+      // Provide dynamic feedback based on role
+      if (isAdmin) {
+        alert('Family added successfully to the directory!');
+        router.push('/directory'); // Admins go to directory to see their addition
+      } else {
+        alert('Details submitted! An admin will review and approve your submission shortly.');
+        router.push('/login'); // Non-admins follow standard flow
+      }
     } catch (error) {
       console.error(error);
       alert('Failed to submit details. Try uploading a smaller photo.');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="p-6 bg-white min-h-screen relative z-10">
-      <Link href="/login" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
-        <ArrowLeft size={16} className="mr-1" /> Back to Login
+      <Link href={isAdmin ? "/" : "/login"} className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
+        <ArrowLeft size={16} className="mr-1" /> {isAdmin ? "Back to Dashboard" : "Back to Login"}
       </Link>
       
       <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">Submit Family Details</h1>
@@ -199,7 +212,6 @@ export default function AddFamily() {
               <div key={index} className="flex gap-3 items-start relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 
                 <div className="flex-1 space-y-4">
-                  {/* Name & Relation Row */}
                   <div className="flex gap-3">
                     <div className="w-2/3">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
@@ -207,13 +219,11 @@ export default function AddFamily() {
                     </div>
                   </div>
 
-                  {/* Explicit Tags Field */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles (Comma Separated)</label>
                     <input placeholder="e.g. Sunday School Student, 4th Std, Choir" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
                   </div>
 
-                  {/* Blood Group & Donate */}
                   <div className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                     <div className="w-1/3">
                       <select className="w-full p-2 border border-slate-200 rounded-md text-sm outline-none bg-white font-medium" value={member.bloodGroup} onChange={e => handleMemberChange(index, 'bloodGroup', e.target.value)}>
@@ -231,7 +241,6 @@ export default function AddFamily() {
                   </div>
                 </div>
 
-                {/* Remove button */}
                 {members.length > 1 && (
                   <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18}/></button>
                 )}
@@ -267,7 +276,7 @@ export default function AddFamily() {
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-teal-700 text-white font-bold p-4 rounded-xl shadow-md hover:bg-teal-800 transition disabled:opacity-50">
-          {loading ? 'Submitting...' : 'Submit to Admin'}
+          {loading ? 'Submitting...' : (isAdmin ? 'Add Family to Directory' : 'Submit to Admin')}
         </button>
       </form>
     </div>
