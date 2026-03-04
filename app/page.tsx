@@ -28,29 +28,29 @@ export default function Dashboard() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const text = e.target?.result as string;
-      const rows = text.split('\n').slice(1).filter(row => row.trim() !== ''); 
-      
+      const rows = text.split('\n').slice(1).filter(row => row.trim() !== '');
+
       const familiesMap = new Map();
 
       for (const row of rows) {
         // Splits the 11 columns accurately
         const [
-          familyName, primaryMobile, currentAddress, nativeAddress, 
-          homeAssembly, commendedAssembly, notes, 
+          familyName, primaryMobile, currentAddress, nativeAddress,
+          homeAssembly, commendedAssembly, notes,
           memberName, bloodGroup, willingToDonate, tags
         ] = row.split(',').map(s => s?.trim() || '');
 
-        if (!primaryMobile) continue; 
+        if (!primaryMobile) continue;
 
         if (!familiesMap.has(primaryMobile)) {
           familiesMap.set(primaryMobile, {
-            familyName, 
-            primaryMobile, 
-            currentAddress, 
-            nativeAddress, 
-            homeAssembly, 
-            commendedAssembly, 
-            notes, 
+            familyName,
+            primaryMobile,
+            currentAddress,
+            nativeAddress,
+            homeAssembly,
+            commendedAssembly,
+            notes,
             status: 'Active',
             members: [],
             submittedBy: "Bulk Admin Upload",
@@ -110,6 +110,21 @@ export default function Dashboard() {
             <h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2>
             <p className="text-sm text-slate-500">Current needs of the assembly</p>
           </div>
+        </Link>
+
+        <Link href="/youth" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
+          <div><h2 className="font-bold text-slate-800 text-lg">Youth Group</h2><p className="text-sm text-slate-500">Youth & young families</p></div>
+        </Link>
+
+        <Link href="/bachelors" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
+          <div><h2 className="font-bold text-slate-800 text-lg">Bachelors</h2><p className="text-sm text-slate-500">Bachelors & Spinsters</p></div>
+        </Link>
+
+        <Link href="/sunday-school" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
+          <div><h2 className="font-bold text-slate-800 text-lg">Sunday School</h2><p className="text-sm text-slate-500">Students & Teachers</p></div>
         </Link>
 
         <Link href="/blood-registry" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 transition flex items-center gap-4 group">
