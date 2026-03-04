@@ -51,12 +51,10 @@ export default function AddFamily() {
   // DETERMINE IF USER IS ADMIN TO BYPASS APPROVAL
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().includes('admin');
 
-  const [familyName, setFamilyName] = useState('');
   const [currentAddress, setCurrentAddress] = useState('');
   const [nativeAddress, setNativeAddress] = useState('');
   const [homeAssembly, setHomeAssembly] = useState('');
   const [commendedAssembly, setCommendedAssembly] = useState('');
-  const [primaryMobile, setPrimaryMobile] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
   const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
@@ -97,6 +95,14 @@ export default function AddFamily() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Ensure primary member has details
+    const primaryMember = members[0];
+    if (!primaryMember.name || !primaryMember.mobile) {
+      alert("The Primary Member must have a full name and mobile number.");
+      setLoading(false);
+      return;
+    }
 
     let safePhotoUrl = photoUrl;
     if (safePhotoUrl && safePhotoUrl.length > 300000) {
@@ -104,18 +110,19 @@ export default function AddFamily() {
     }
 
     const payload = {
-      familyName, currentAddress, nativeAddress, homeAssembly, commendedAssembly,
-      primaryMobile, photoUrl: safePhotoUrl, status, notes,
+      // Set the Family Name and Primary Mobile to match the first member
+      familyName: primaryMember.name, 
+      primaryMobile: primaryMember.mobile,
+      
+      currentAddress, nativeAddress, homeAssembly, commendedAssembly,
+      photoUrl: safePhotoUrl, status, notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
       })),
       lastEdited: new Date().toISOString(),
       submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User',
-
-      // FIXED: If admin, bypass pending state
       isPendingCreation: !isAdmin,
-
       hasPendingEdit: false,
       draftData: null
     };
@@ -123,13 +130,12 @@ export default function AddFamily() {
     try {
       await addDoc(collection(db, 'members'), payload);
 
-      // Provide dynamic feedback based on role
       if (isAdmin) {
         alert('Family added successfully to the directory!');
-        router.push('/directory'); // Admins go to directory to see their addition
+        router.push('/directory'); 
       } else {
         alert('Details submitted! An admin will review and approve your submission shortly.');
-        router.push('/login'); // Non-admins follow standard flow
+        router.push('/login'); 
       }
     } catch (error) {
       console.error(error);
@@ -165,6 +171,22 @@ export default function AddFamily() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        
+        {/* Admin-only Status Field isolated without a header */}
+        {isAdmin && (
+          <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+            <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
+            <select
+              className="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white font-medium"
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        )}
+
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo (Optional)</h2>
           {photoUrl && (
@@ -189,53 +211,42 @@ export default function AddFamily() {
         </div>
 
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Primary Details</h2>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Family Name *</label>
-            <input required type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={familyName} onChange={e => setFamilyName(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Primary Mobile *</label>
-            <input required type="tel" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={primaryMobile} onChange={e => setPrimaryMobile(e.target.value)} />
-          </div>
-          
-          {/* NEW: Admin-only Status Field */}
-          {isAdmin && (
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
-              <select
-                className="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white"
-                value={status}
-                onChange={e => setStatus(e.target.value)}
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-          )}
-        </div>
-
-        <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-            <h2 className="font-bold text-slate-800">Family Members *</h2>
+            <h2 className="font-bold text-slate-800">Members *</h2>
             <button type="button" onClick={handleAddMember} className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-md hover:bg-teal-700 flex items-center">
               <Plus size={14} className="mr-1" /> Add Person
             </button>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 pt-2">
             {members.map((member, index) => (
-              <div key={index} className="flex gap-3 items-start relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div key={index} className={`flex gap-3 items-start relative bg-white p-4 rounded-xl border shadow-sm ${index === 0 ? 'border-teal-300 pt-6' : 'border-slate-200'}`}>
+                
+                {/* Primary Member Badge */}
+                {index === 0 && (
+                  <span className="absolute -top-3 left-4 bg-teal-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                    Primary Member
+                  </span>
+                )}
 
                 <div className="flex-1 space-y-4">
                   {/* Name & Mobile Row */}
                   <div className="flex gap-3">
                     <div className="w-1/2">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
-                      <input required placeholder="e.g. John Doe" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 font-bold" value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                      <input required placeholder="e.g. John Doe" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
                     </div>
                     <div className="w-1/2">
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Personal Mobile</label>
-                      <input type="tel" placeholder="e.g. 9876543210" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.mobile || ''} onChange={e => handleMemberChange(index, 'mobile', e.target.value)} />
+                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
+                        {index === 0 ? 'Primary Mobile *' : 'Personal Mobile'}
+                      </label>
+                      <input 
+                        required={index === 0} 
+                        type="tel" 
+                        placeholder="e.g. 9876543210" 
+                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`} 
+                        value={member.mobile || ''} 
+                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)} 
+                      />
                     </div>
                   </div>
 
@@ -261,7 +272,8 @@ export default function AddFamily() {
                   </div>
                 </div>
 
-                {members.length > 1 && (
+                {/* Hide remove button for Primary Member */}
+                {index > 0 && (
                   <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
                 )}
               </div>

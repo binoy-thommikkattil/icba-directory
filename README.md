@@ -1,4 +1,4 @@
-# Church Directory & Community Portal
+# Church Directory 
 
 A modern, secure, and fully-featured web application built with **Next.js** and **Firebase**, designed specifically for churches, assemblies, and congregations to manage their member directory, emergency blood registry, and community communications.
 
@@ -8,7 +8,7 @@ A modern, secure, and fully-featured web application built with **Next.js** and 
 * **Role-Based Access Control (RBAC):** * **Admins:** Can bulk upload via CSV, bypass approval queues, manage users, edit any family, and view the system audit log.
   * **Approved Members:** Can view the directory, export PDFs, post to noticeboards, and submit their own family details for admin approval.
   * **Pending Users:** Restricted to a "Waiting Room" until an admin approves their account.
-* **Community Sub-Groups:** Auto-populating directories and dedicated Noticeboards for specific groups (e.g., Youth, Sunday School, Bachelors/Spinsters) based on member tags.
+* **Sub-Groups:** Auto-populating directories and dedicated Noticeboards for specific groups (e.g., Youth, Sunday School, Bachelors/Spinsters) based on member tags.
 * **Emergency Blood Registry:** Quickly find willing blood donors within the congregation, complete with 1-click WhatsApp and phone call routing to the individual's personal mobile.
 * **Professional PDF Generation:** Generate formatted PDF directory books or single family cards with automatic pagination, timestamps, and generator watermarks.
 * **Robust CSV Bulk Upload:** Admins can securely import hundreds of families at once using a robust CSV parser that intelligently groups family members by primary mobile numbers.

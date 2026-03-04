@@ -1,12 +1,12 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/AuthContext';
-import { Plus, Trash2, Upload, X, Crop as CropIcon } from 'lucide-react';
-import { use } from 'react';
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import Cropper from 'react-easy-crop';
+import { useAuth } from '@/lib/AuthContext';
 
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
@@ -43,22 +43,29 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
   });
 };
 
-export default function EditFamily({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+function EditFamilyContent() {
+  const { user, role } = useAuth();
   const router = useRouter();
-  const { user, loading: authLoading, userProfile } = useAuth(); // ADDED userProfile
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  
+  // NEW: Grab both routing hooks to make it bulletproof
+  const searchParams = useSearchParams();
+  const params = useParams();
+  
+  // NEW: Try to find the ID from either a dynamic route (/edit/123) OR query string (?id=123)
+  const familyId = (params?.id as string) || searchParams.get('id');
 
-  const [familyName, setFamilyName] = useState('');
+  const isAdmin = role === 'admin' || user?.email?.toLowerCase().includes('admin');
+
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+
   const [currentAddress, setCurrentAddress] = useState('');
   const [nativeAddress, setNativeAddress] = useState('');
   const [homeAssembly, setHomeAssembly] = useState('');
   const [commendedAssembly, setCommendedAssembly] = useState('');
-  const [primaryMobile, setPrimaryMobile] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
-  const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const [members, setMembers] = useState<any[]>([]);
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -67,48 +74,70 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   useEffect(() => {
-    if (!authLoading && !user) router.push('/login');
-  }, [user, authLoading, router]);
-
-  const isAdmin = user?.email?.toLowerCase().includes('admin');
-
-  useEffect(() => {
-    const fetchFamily = async () => {
+    async function fetchFamily() {
+      if (!familyId) {
+        console.error("No family ID found in URL.");
+        setFetching(false);
+        return;
+      }
       try {
-        const docRef = doc(db, 'members', resolvedParams.id);
+        const docRef = doc(db, 'members', familyId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setFamilyName(data.familyName || '');
           setCurrentAddress(data.currentAddress || '');
           setNativeAddress(data.nativeAddress || '');
           setHomeAssembly(data.homeAssembly || '');
           setCommendedAssembly(data.commendedAssembly || '');
-          setPrimaryMobile(data.primaryMobile || '');
           setStatus(data.status || 'Active');
-          setPhotoUrl(data.photoUrl || '');
           setNotes(data.notes || '');
+          setPhotoUrl(data.photoUrl || '');
 
-          if (data.members && data.members.length > 0) {
-            setMembers(data.members.map((m: any) => ({
+          let fetchedMembers = data.members || [];
+
+          // CRITICAL: Retrofit older data to the new "Primary Member First" format
+          if (fetchedMembers.length > 0) {
+            
+            // Failsafe 1: Ensure first member has a name
+            if (!fetchedMembers[0].name) {
+               fetchedMembers[0].name = data.familyName || '';
+            }
+            
+            // Failsafe 2: Ensure first member has a mobile number
+            if (!fetchedMembers[0].mobile) {
+              fetchedMembers[0].mobile = data.primaryMobile || '';
+            }
+            
+            // Ensure all properties exist so inputs don't crash
+            fetchedMembers = fetchedMembers.map((m: any) => ({
               ...m,
-              tags: Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || ''),
-              willingToDonate: m.willingToDonate || false
-            })));
+              name: m.name || '',
+              mobile: m.mobile || '',
+              bloodGroup: m.bloodGroup || '',
+              willingToDonate: !!m.willingToDonate,
+              tags: Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || '')
+            }));
+          } else {
+            // Fallback if somehow there are no members in the array at all
+            fetchedMembers = [{ name: data.familyName || '', mobile: data.primaryMobile || '', bloodGroup: '', willingToDonate: false, tags: '' }];
           }
+          
+          setMembers(fetchedMembers);
+        } else {
+          console.error("Family document does not exist!");
         }
       } catch (error) {
         console.error("Error fetching family:", error);
       } finally {
-        setLoading(false);
+        setFetching(false);
       }
-    };
-    if (user) fetchFamily();
-  }, [resolvedParams.id, user]);
+    }
+    fetchFamily();
+  }, [familyId]);
 
   const handleAddMember = () => setMembers([...members, { name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
   const handleMemberChange = (index: number, field: string, value: any) => {
-    const newMembers = [...members] as any;
+    const newMembers = [...members];
     newMembers[index][field] = value;
     setMembers(newMembers);
   };
@@ -135,56 +164,76 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+    if (!familyId) return;
+    setLoading(true);
+
+    const primaryMember = members[0];
+    if (!primaryMember.name || !primaryMember.mobile) {
+      alert("The Primary Member must have a full name and mobile number.");
+      setLoading(false);
+      return;
+    }
 
     let safePhotoUrl = photoUrl;
     if (safePhotoUrl && safePhotoUrl.length > 300000) {
       safePhotoUrl = await autoCompressImage(safePhotoUrl);
     }
 
-    const updatedData = {
-      familyName, currentAddress, nativeAddress, homeAssembly, commendedAssembly,
-      primaryMobile, photoUrl: safePhotoUrl, status, notes,
+    const payload = {
+      familyName: primaryMember.name, 
+      primaryMobile: primaryMember.mobile,
+      currentAddress, 
+      nativeAddress, 
+      homeAssembly, 
+      commendedAssembly,
+      photoUrl: safePhotoUrl, 
+      status, 
+      notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
-        tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
+        tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : m.tags
       })),
-      lastEdited: new Date().toISOString(),
+      lastEdited: new Date().toISOString()
     };
 
     try {
-      if (isAdmin) {
-        await updateDoc(doc(db, 'members', resolvedParams.id), updatedData);
-        alert('Family updated successfully!');
-      } else {
-        await updateDoc(doc(db, 'members', resolvedParams.id), {
-          hasPendingEdit: true,
-          draftData: {
-            ...updatedData,
-            // UPDATED TO USE PROFILE NAME
-            submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User'
-          }
-        });
-        alert('Edit submitted! An admin will review your changes shortly.');
-      }
+      await updateDoc(doc(db, 'members', familyId), payload);
+      alert('Family details updated successfully!');
       router.push('/directory');
     } catch (error) {
       console.error(error);
-      alert('Failed to submit edit. Try removing the photo or uploading a smaller one.');
-      setSaving(false);
+      alert('Failed to update details. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (authLoading || loading || !user) return <div className="p-8 text-center text-slate-500">Loading editor...</div>;
+  if (fetching) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-teal-600 mr-2" size={24} /> Loading details...
+      </div>
+    );
+  }
+
+  // If no ID was found after fetching completes, show an error
+  if (!familyId) {
+     return (
+        <div className="flex flex-col min-h-screen items-center justify-center bg-slate-50 p-6 text-center">
+           <h2 className="text-xl font-bold text-slate-800 mb-2">Error: Family ID Missing</h2>
+           <p className="text-slate-500 mb-6">We couldn't find the family you are trying to edit.</p>
+           <Link href="/directory" className="px-5 py-2.5 bg-teal-600 text-white rounded-lg font-bold">Return to Directory</Link>
+        </div>
+     );
+  }
 
   return (
-    <div className="p-6 bg-white min-h-screen">
-      <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2">Edit Family</h1>
-      {isAdmin ? (
-        <p className="text-slate-500 mb-6 text-sm font-medium text-teal-600">Admin Mode: Changes will go live instantly.</p>
-      ) : (
-        <p className="text-slate-500 mb-6 text-sm">Your changes will be submitted to the church administration for approval.</p>
-      )}
+    <div className="p-6 bg-white min-h-screen relative z-10">
+      <Link href="/directory" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
+        <ArrowLeft size={16} className="mr-1" /> Back to Directory
+      </Link>
+
+      <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">Edit Family Details</h1>
 
       {rawImage && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
@@ -204,8 +253,23 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        
+        {isAdmin && (
+          <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+            <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
+            <select
+              className="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white font-medium"
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        )}
+
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo</h2>
+          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo (Optional)</h2>
           {photoUrl && (
             <div className="relative w-full h-48 rounded-xl overflow-hidden border border-slate-200 bg-black">
               <img src={photoUrl} className="w-full h-full object-cover opacity-80" alt="Preview" />
@@ -220,7 +284,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
             ) : (
               <div className="flex flex-col items-center justify-center">
                 <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                <p className="text-sm text-slate-500 font-medium">Click to upload new photo</p>
+                <p className="text-sm text-slate-500 font-medium">Click to upload photo</p>
               </div>
             )}
             <input type="file" accept="image/*" className="hidden" onChange={onFileChange} />
@@ -228,56 +292,48 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Primary Details</h2>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Family Name *</label>
-            <input required type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={familyName} onChange={e => setFamilyName(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
-            <select className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={status} onChange={e => setStatus(e.target.value)}>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Primary Mobile *</label>
-            <input required type="tel" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={primaryMobile} onChange={e => setPrimaryMobile(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-            <h2 className="font-bold text-slate-800">Family Members *</h2>
+            <h2 className="font-bold text-slate-800">Members *</h2>
             <button type="button" onClick={handleAddMember} className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-md hover:bg-teal-700 flex items-center">
               <Plus size={14} className="mr-1" /> Add Person
             </button>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 pt-2">
             {members.map((member, index) => (
-              <div key={index} className="flex gap-3 items-start relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div key={index} className={`flex gap-3 items-start relative bg-white p-4 rounded-xl border shadow-sm ${index === 0 ? 'border-teal-300 pt-6' : 'border-slate-200'}`}>
+                
+                {index === 0 && (
+                  <span className="absolute -top-3 left-4 bg-teal-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                    Primary Member
+                  </span>
+                )}
 
                 <div className="flex-1 space-y-4">
-                  {/* Name & Relation Row */}
-                  {/* Name & Mobile Row */}
                   <div className="flex gap-3">
                     <div className="w-1/2">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
-                      <input required placeholder="e.g. John Doe" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 font-bold" value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                      <input required placeholder="e.g. John Doe" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
                     </div>
                     <div className="w-1/2">
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Personal Mobile</label>
-                      <input type="tel" placeholder="e.g. 9876543210" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.mobile || ''} onChange={e => handleMemberChange(index, 'mobile', e.target.value)} />
+                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
+                        {index === 0 ? 'Primary Mobile *' : 'Personal Mobile'}
+                      </label>
+                      <input 
+                        required={index === 0} 
+                        type="tel" 
+                        placeholder="e.g. 9876543210" 
+                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`} 
+                        value={member.mobile || ''} 
+                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)} 
+                      />
                     </div>
                   </div>
 
-                  {/* Explicit Tags Field */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles (Comma Separated)</label>
-                    <input placeholder="e.g. Sunday School Student, 4th Std, Choir" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
+                    <input placeholder="e.g. Sunday School Student, Choir" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
                   </div>
 
-                  {/* Blood Group & Donate */}
                   <div className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                     <div className="w-1/3">
                       <select className="w-full p-2 border border-slate-200 rounded-md text-sm outline-none bg-white font-medium" value={member.bloodGroup} onChange={e => handleMemberChange(index, 'bloodGroup', e.target.value)}>
@@ -295,8 +351,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
                   </div>
                 </div>
 
-                {/* Remove button */}
-                {members.length > 1 && (
+                {index > 0 && (
                   <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
                 )}
               </div>
@@ -305,7 +360,7 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Additional Info</h2>
+          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Info</h2>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Current Address *</label>
             <textarea required rows={3} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={currentAddress} onChange={e => setCurrentAddress(e.target.value)} />
@@ -330,13 +385,19 @@ export default function EditFamily({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        <div className="pt-4 pb-20 flex gap-4">
-          <button type="button" onClick={() => router.push('/directory')} className="w-1/3 bg-slate-200 text-slate-800 font-bold p-4 rounded-xl hover:bg-slate-300 transition">Cancel</button>
-          <button type="submit" disabled={saving} className="w-2/3 bg-teal-700 text-white font-bold p-4 rounded-xl shadow-md hover:bg-teal-800 transition disabled:opacity-50">
-            {saving ? 'Submitting...' : (isAdmin ? 'Update Live Details' : 'Submit for Approval')}
-          </button>
-        </div>
+        <button type="submit" disabled={loading} className="w-full bg-teal-700 text-white font-bold p-4 rounded-xl shadow-md hover:bg-teal-800 transition disabled:opacity-50">
+          {loading ? 'Saving Updates...' : 'Save Changes'}
+        </button>
       </form>
     </div>
+  );
+}
+
+// Next.js Suspense wrapper required for useSearchParams()
+export default function EditFamily() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center font-bold text-slate-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>}>
+      <EditFamilyContent />
+    </Suspense>
   );
 }
