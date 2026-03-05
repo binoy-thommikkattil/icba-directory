@@ -1,23 +1,61 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { AuthProvider } from "@/lib/AuthContext";
-import TopBar from "@/components/TopBar";
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { AuthProvider } from '@/lib/AuthContext';
 
-export const metadata: Metadata = {
-  title: "ICBA Directory",
-  description: "Virtual Church Directory",
+const inter = Inter({ subsets: ['latin'] });
+
+// 1. ADD THE VIEWPORT EXPORT
+export const viewport: Viewport = {
+  themeColor: '#0d9488',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// 2. UPDATE THE METADATA
+export const metadata: Metadata = {
+  title: 'ICBA Directory',
+  description: 'Church Member Directory',
+  manifest: '/manifest.json', // Points to your new manifest
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Directory',
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased text-slate-900 pb-20">
+      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
         <AuthProvider>
-          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative border-x border-slate-100">
-            <TopBar />
-            {children}
-          </div>
+          {children}
         </AuthProvider>
+
+        {/* 3. REGISTER THE SERVICE WORKER */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful');
+                    },
+                    function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
