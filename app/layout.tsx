@@ -1,56 +1,47 @@
-import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import { AuthProvider } from '@/lib/AuthContext';
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { AuthProvider } from "@/lib/AuthContext";
+import TopBar from "@/components/TopBar";
 
-const inter = Inter({ subsets: ['latin'] });
-
-// 1. ADD THE VIEWPORT EXPORT
+// 1. ADDED: Viewport settings to lock the scale for mobile app feel
 export const viewport: Viewport = {
-  themeColor: '#0d9488',
-  width: 'device-width',
+  themeColor: "#0d9488",
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
 };
 
-// 2. UPDATE THE METADATA
+// 2. ADDED: Manifest and Apple Web App settings to your existing metadata
 export const metadata: Metadata = {
-  title: 'ICBA Directory',
-  description: 'Church Member Directory',
-  manifest: '/manifest.json', // Points to your new manifest
+  title: "ICBA Directory",
+  description: "Virtual Church Directory",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Directory',
+    statusBarStyle: "default",
+    title: "Directory",
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
+      <body className="font-sans antialiased text-slate-900 pb-20">
         <AuthProvider>
-          {children}
+          {/* KEPT YOUR EXACT STYLING: This keeps the desktop view looking like a phone screen! */}
+          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative border-x border-slate-100">
+            <TopBar />
+            {children}
+          </div>
         </AuthProvider>
 
-        {/* 3. REGISTER THE SERVICE WORKER */}
+        {/* 3. ADDED: The background Service Worker to trigger the Install prompt */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(
-                    function(registration) {
-                      console.log('ServiceWorker registration successful');
-                    },
-                    function(err) {
-                      console.log('ServiceWorker registration failed: ', err);
-                    }
-                  );
+                  navigator.serviceWorker.register('/sw.js');
                 });
               }
             `,
