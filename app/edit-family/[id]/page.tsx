@@ -50,7 +50,7 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
 };
 
 function EditFamilyContent() {
-  const { user, role } = useAuth();
+  const { user, role, userProfile } = useAuth();
   const router = useRouter();
 
   const searchParams = useSearchParams();
@@ -212,7 +212,8 @@ function EditFamilyContent() {
         ...m,
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : m.tags
       })),
-      lastEdited: new Date().toISOString()
+      lastEdited: new Date().toISOString(),
+      submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User'
     };
 
     try {
