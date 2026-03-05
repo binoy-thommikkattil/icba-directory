@@ -1,7 +1,8 @@
 'use client';
 import { useState, useCallback } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -13,14 +14,19 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> 
   image.src = imageSrc;
   await new Promise((resolve) => (image.onload = resolve));
   const canvas = document.createElement('canvas');
-  const MAX_WIDTH = 600;
+
+  // Allow a nice, high-resolution image for Firebase Storage (up to 1200px)
   let scale = 1;
+  const MAX_WIDTH = 1200; 
   if (pixelCrop.width > MAX_WIDTH) scale = MAX_WIDTH / pixelCrop.width;
+
   canvas.width = pixelCrop.width * scale;
   canvas.height = pixelCrop.height * scale;
   const ctx = canvas.getContext('2d');
   ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.8);
+
+  // Export at 90% quality for crispness
+  return canvas.toDataURL('image/jpeg', 0.9);
 };
 
 const autoCompressImage = async (base64Str: string): Promise<string> => {
@@ -29,7 +35,7 @@ const autoCompressImage = async (base64Str: string): Promise<string> => {
     const img = new window.Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 400;
+      const MAX_WIDTH = 400; // Crush it down for the Database text backup
       let scale = 1;
       if (img.width > MAX_WIDTH) scale = MAX_WIDTH / img.width;
       canvas.width = img.width * scale;
@@ -95,8 +101,7 @@ export default function AddFamily() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Ensure primary member has details
+
     const primaryMember = members[0];
     if (!primaryMember.name || !primaryMember.mobile) {
       alert("The Primary Member must have a full name and mobile number.");
@@ -104,18 +109,36 @@ export default function AddFamily() {
       return;
     }
 
-    let safePhotoUrl = photoUrl;
-    if (safePhotoUrl && safePhotoUrl.length > 300000) {
-      safePhotoUrl = await autoCompressImage(safePhotoUrl);
+    // --- BULLETPROOF DUAL-SAVE SYSTEM ---
+    let finalStorageUrl = '';
+    let finalBase64Backup = '';
+
+    if (photoUrl && photoUrl.startsWith('data:image')) {
+      // 1. ALWAYS generate the heavily compressed Base64 backup for the database
+      finalBase64Backup = photoUrl.length > 300000 ? await autoCompressImage(photoUrl) : photoUrl;
+
+      // 2. Try to upload the original cropped image to Firebase Storage
+      try {
+        const fileName = `family_photos/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const storageRef = ref(storage, fileName);
+        await uploadString(storageRef, photoUrl, 'data_url');
+        finalStorageUrl = await getDownloadURL(storageRef);
+      } catch (uploadError) {
+        console.warn("Firebase Storage failed. Relying entirely on Base64 backup.", uploadError);
+        // We do NOT stop the submission here. We just let finalStorageUrl remain empty!
+      }
     }
 
     const payload = {
-      // Set the Family Name and Primary Mobile to match the first member
-      familyName: primaryMember.name, 
+      familyName: primaryMember.name,
       primaryMobile: primaryMember.mobile,
-      
       currentAddress, nativeAddress, homeAssembly, commendedAssembly,
-      photoUrl: safePhotoUrl, status, notes,
+
+      // Save BOTH to the database!
+      photoUrl: finalStorageUrl,
+      photoBase64: finalBase64Backup,
+
+      status, notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
         tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
@@ -132,14 +155,14 @@ export default function AddFamily() {
 
       if (isAdmin) {
         alert('Family added successfully to the directory!');
-        router.push('/directory'); 
+        router.push('/directory');
       } else {
         alert('Details submitted! An admin will review and approve your submission shortly.');
-        router.push('/login'); 
+        router.push('/login');
       }
     } catch (error) {
       console.error(error);
-      alert('Failed to submit details. Try uploading a smaller photo.');
+      alert('Failed to submit details to the database.');
     } finally {
       setLoading(false);
     }
@@ -171,8 +194,7 @@ export default function AddFamily() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* Admin-only Status Field isolated without a header */}
+
         {isAdmin && (
           <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
             <label className="block text-sm font-bold text-slate-700 mb-1">Status / Association *</label>
@@ -220,8 +242,7 @@ export default function AddFamily() {
           <div className="space-y-4 pt-2">
             {members.map((member, index) => (
               <div key={index} className={`flex gap-3 items-start relative bg-white p-4 rounded-xl border shadow-sm ${index === 0 ? 'border-teal-300 pt-6' : 'border-slate-200'}`}>
-                
-                {/* Primary Member Badge */}
+
                 {index === 0 && (
                   <span className="absolute -top-3 left-4 bg-teal-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
                     Primary Member
@@ -229,7 +250,6 @@ export default function AddFamily() {
                 )}
 
                 <div className="flex-1 space-y-4">
-                  {/* Name & Mobile Row */}
                   <div className="flex gap-3">
                     <div className="w-1/2">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
@@ -239,20 +259,20 @@ export default function AddFamily() {
                       <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
                         {index === 0 ? 'Primary Mobile *' : 'Personal Mobile'}
                       </label>
-                      <input 
-                        required={index === 0} 
-                        type="tel" 
-                        placeholder="e.g. 9876543210" 
-                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`} 
-                        value={member.mobile || ''} 
-                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)} 
+                      <input
+                        required={index === 0}
+                        type="tel"
+                        placeholder="e.g. 9876543210"
+                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`}
+                        value={member.mobile || ''}
+                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)}
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles (Comma Separated)</label>
-                    <input placeholder="e.g. Sunday School Student, 4th Std, Choir" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
+                    <input placeholder="e.g. Sunday School Student, Choir" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
                   </div>
 
                   <div className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100">
@@ -272,7 +292,6 @@ export default function AddFamily() {
                   </div>
                 </div>
 
-                {/* Hide remove button for Primary Member */}
                 {index > 0 && (
                   <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
                 )}

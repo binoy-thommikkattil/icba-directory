@@ -30,7 +30,8 @@ const getBase64ImageFromUrl = async (imageUrl: string): Promise<{ dataUrl: strin
 
 export interface Individual {
   name: string;
-  relationship: string;
+  mobile?: string; // NEW: Added mobile to the interface
+  relationship?: string;
   bloodGroup?: string;
   tags?: string[];
 }
@@ -45,6 +46,7 @@ export interface MemberProps {
   commendedAssembly?: string;
   primaryMobile?: string;
   photoUrl?: string;
+  photoBase64?: string; // NEW: Added fallback photo field
   status?: string;
   notes?: string;
   lastEdited?: string;
@@ -55,7 +57,7 @@ export interface MemberProps {
 
 export default function DirectoryCard({
   id = '', familyName = 'Unknown', members = [], currentAddress = '', nativeAddress = '',
-  homeAssembly = '', commendedAssembly = '', primaryMobile = '', photoUrl = '',
+  homeAssembly = '', commendedAssembly = '', primaryMobile = '', photoUrl = '', photoBase64 = '',
   status = 'Active', notes = '', lastEdited = new Date().toISOString(), hasPendingEdit = false,
   onSwipeLeft, onSwipeRight
 }: MemberProps) {
@@ -63,6 +65,9 @@ export default function DirectoryCard({
   const { user } = useAuth();
   const [isSharing, setIsSharing] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  // Determine which photo to try displaying first
+  const displayPhoto = photoUrl || photoBase64;
 
   // EXACT IST FORMATTING ADDED HERE
   const formattedDate = lastEdited
@@ -119,30 +124,46 @@ export default function DirectoryCard({
       pdf.text(`${familyName}`, margin, yPos);
       yPos += 10;
 
+      // --- NEW: DUAL-SAVE PDF IMAGE LOGIC ---
+      // 1. Explicitly type the variable
+      let imgDataToPrint: { dataUrl: string; width: number; height: number } | null = null;
+
       if (photoUrl) {
-        const imgData = await getBase64ImageFromUrl(photoUrl);
-        if (imgData) {
-          let printWidth = 80;
-          let printHeight = 60;
-          const imgRatio = imgData.width / imgData.height;
-          const targetRatio = printWidth / printHeight;
+        imgDataToPrint = await getBase64ImageFromUrl(photoUrl);
+      }
 
-          if (imgRatio > targetRatio) {
-            printHeight = printWidth / imgRatio;
-          } else {
-            printWidth = printHeight * imgRatio;
-          }
+      // If photoUrl failed to fetch or was missing, use the Base64 backup directly!
+      if (!imgDataToPrint && photoBase64) {
+        // 2. Explicitly type the Promise
+        imgDataToPrint = await new Promise<{ dataUrl: string; width: number; height: number } | null>((resolve) => {
+          const img = new window.Image();
+          img.onload = () => resolve({ dataUrl: photoBase64, width: img.width, height: img.height });
+          img.onerror = () => resolve(null);
+          img.src = photoBase64;
+        });
+      }
 
-          // Prevent image from pushing content off the page
-          if (yPos + printHeight > pageHeight - 20) {
-            addPageFooter();
-            pdf.addPage();
-            yPos = 30;
-          }
+      if (imgDataToPrint) {
+        let printWidth = 80;
+        let printHeight = 60;
+        const imgRatio = imgDataToPrint.width / imgDataToPrint.height;
+        const targetRatio = printWidth / printHeight;
 
-          pdf.addImage(imgData.dataUrl, 'JPEG', margin, yPos, printWidth, printHeight);
-          yPos += printHeight + 12;
+        if (imgRatio > targetRatio) {
+          printHeight = printWidth / imgRatio;
+        } else {
+          printWidth = printHeight * imgRatio;
         }
+
+        // Prevent image from pushing content off the page
+        if (yPos + printHeight > pageHeight - 20) {
+          addPageFooter();
+          pdf.addPage();
+          yPos = 30;
+        }
+
+        pdf.addImage(imgDataToPrint.dataUrl, 'JPEG', margin, yPos, printWidth, printHeight);
+        yPos += printHeight + 12;
       }
 
       pdf.setFontSize(12);
@@ -153,8 +174,8 @@ export default function DirectoryCard({
 
       if (members.length > 0) {
         members.forEach((member: Individual) => {
-          // 3. Omitted the relationship rendering entirely
-          const memberText = `• ${member.name}`;
+          // Include personal mobile in the PDF printout if it exists
+          const memberText = `• ${member.name} ${member.mobile ? `(${member.mobile})` : ''}`;
 
           if (yPos > pageHeight - 20) { addPageFooter(); pdf.addPage(); yPos = 30; }
           pdf.text(memberText, margin + 5, yPos);
@@ -217,10 +238,20 @@ export default function DirectoryCard({
 
   return (
     <>
-      {isLightboxOpen && photoUrl && (
+      {isLightboxOpen && displayPhoto && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4" onClick={() => setIsLightboxOpen(false)}>
           <button className="absolute top-6 right-6 text-white p-2 bg-white/10 rounded-full hover:bg-white/20 transition"><X size={24} /></button>
-          <img src={photoUrl} alt="Full size" className="max-w-full max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
+          <img
+            src={displayPhoto}
+            onError={(e) => {
+              if (photoBase64 && e.currentTarget.src !== photoBase64) {
+                e.currentTarget.src = photoBase64;
+              }
+            }}
+            alt="Full size"
+            className="max-w-full max-h-[90vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
@@ -269,9 +300,21 @@ export default function DirectoryCard({
           </div>
         </div>
 
-        {photoUrl ? (
+        {displayPhoto ? (
           <div className="relative h-64 w-full bg-slate-100 print:hidden overflow-hidden cursor-pointer group" onClick={() => setIsLightboxOpen(true)}>
-            <img src={photoUrl} alt={`${familyName}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <img
+              src={displayPhoto}
+              onError={(e) => {
+                // FALLBACK MAGIC: If the Storage URL is broken, silently swap to the Base64 string!
+                if (photoBase64 && e.currentTarget.src !== photoBase64) {
+                  e.currentTarget.src = photoBase64;
+                } else {
+                  e.currentTarget.style.display = 'none'; // Only hide if BOTH fail
+                }
+              }}
+              alt={`${familyName}`}
+              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+            />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
               <span className="bg-black/60 text-white px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition text-sm font-medium backdrop-blur-sm">Click to expand</span>
             </div>

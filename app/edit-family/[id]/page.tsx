@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -13,14 +14,19 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> 
   image.src = imageSrc;
   await new Promise((resolve) => (image.onload = resolve));
   const canvas = document.createElement('canvas');
-  const MAX_WIDTH = 600;
+  
+  // Allow a nice, high-resolution image for Firebase Storage
   let scale = 1;
+  const MAX_WIDTH = 1200; 
   if (pixelCrop.width > MAX_WIDTH) scale = MAX_WIDTH / pixelCrop.width;
+  
   canvas.width = pixelCrop.width * scale;
   canvas.height = pixelCrop.height * scale;
   const ctx = canvas.getContext('2d');
   ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.8);
+  
+  // Export at 90% quality for crispness
+  return canvas.toDataURL('image/jpeg', 0.9);
 };
 
 const autoCompressImage = async (base64Str: string): Promise<string> => {
@@ -47,11 +53,8 @@ function EditFamilyContent() {
   const { user, role } = useAuth();
   const router = useRouter();
 
-  // NEW: Grab both routing hooks to make it bulletproof
   const searchParams = useSearchParams();
   const params = useParams();
-
-  // NEW: Try to find the ID from either a dynamic route (/edit/123) OR query string (?id=123)
   const familyId = (params?.id as string) || searchParams.get('id');
 
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().includes('admin');
@@ -68,6 +71,8 @@ function EditFamilyContent() {
   const [members, setMembers] = useState<any[]>([]);
 
   const [photoUrl, setPhotoUrl] = useState('');
+  const [existingBase64, setExistingBase64] = useState(''); // Tracks existing backup
+  
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -91,24 +96,17 @@ function EditFamilyContent() {
           setCommendedAssembly(data.commendedAssembly || '');
           setStatus(data.status || 'Active');
           setNotes(data.notes || '');
-          setPhotoUrl(data.photoUrl || '');
+          
+          // Populate existing photos (fallback to Base64 if needed)
+          setPhotoUrl(data.photoUrl || data.photoBase64 || '');
+          setExistingBase64(data.photoBase64 || '');
 
           let fetchedMembers = data.members || [];
 
-          // CRITICAL: Retrofit older data to the new "Primary Member First" format
           if (fetchedMembers.length > 0) {
+            if (!fetchedMembers[0].name) fetchedMembers[0].name = data.familyName || '';
+            if (!fetchedMembers[0].mobile) fetchedMembers[0].mobile = data.primaryMobile || '';
 
-            // Failsafe 1: Ensure first member has a name
-            if (!fetchedMembers[0].name) {
-              fetchedMembers[0].name = data.familyName || '';
-            }
-
-            // Failsafe 2: Ensure first member has a mobile number
-            if (!fetchedMembers[0].mobile) {
-              fetchedMembers[0].mobile = data.primaryMobile || '';
-            }
-
-            // Ensure all properties exist so inputs don't crash
             fetchedMembers = fetchedMembers.map((m: any) => ({
               ...m,
               name: m.name || '',
@@ -118,7 +116,6 @@ function EditFamilyContent() {
               tags: Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || '')
             }));
           } else {
-            // Fallback if somehow there are no members in the array at all
             fetchedMembers = [{ name: data.familyName || '', mobile: data.primaryMobile || '', bloodGroup: '', willingToDonate: false, tags: '' }];
           }
 
@@ -174,12 +171,29 @@ function EditFamilyContent() {
       return;
     }
 
-    let safePhotoUrl = photoUrl;
-    if (safePhotoUrl && safePhotoUrl.length > 300000) {
-      safePhotoUrl = await autoCompressImage(safePhotoUrl);
+    // --- BULLETPROOF DUAL-SAVE SYSTEM ---
+    let finalStorageUrl = photoUrl; 
+    let finalBase64Backup = existingBase64; 
+
+    // If it is a newly cropped image, OR an old Base64 image that needs upgrading
+    if (photoUrl && photoUrl.startsWith('data:image')) {
+      finalBase64Backup = photoUrl.length > 300000 ? await autoCompressImage(photoUrl) : photoUrl;
+
+      try {
+        const fileName = `family_photos/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const storageRef = ref(storage, fileName);
+        await uploadString(storageRef, photoUrl, 'data_url');
+        finalStorageUrl = await getDownloadURL(storageRef);
+      } catch (uploadError) {
+        console.warn("Firebase Storage failed. Relying entirely on Base64 backup.", uploadError);
+        finalStorageUrl = ''; // Clear it so the front-end falls back to the Base64 safely
+      }
+    } else if (!photoUrl) {
+      // User removed the image entirely
+      finalStorageUrl = '';
+      finalBase64Backup = '';
     }
 
-    // Capture all the new form data into a variable (do not add hasPendingEdit yet)
     const formData = {
       familyName: primaryMember.name,
       primaryMobile: primaryMember.mobile,
@@ -187,7 +201,11 @@ function EditFamilyContent() {
       nativeAddress,
       homeAssembly,
       commendedAssembly,
-      photoUrl: safePhotoUrl,
+      
+      // Save BOTH to the database
+      photoUrl: finalStorageUrl,
+      photoBase64: finalBase64Backup,
+      
       status,
       notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
@@ -199,7 +217,6 @@ function EditFamilyContent() {
 
     try {
       if (isAdmin) {
-        // Admins overwrite the live data immediately and clear any drafts
         await updateDoc(doc(db, 'members', familyId), {
           ...formData,
           hasPendingEdit: false,
@@ -207,7 +224,6 @@ function EditFamilyContent() {
         });
         alert('Family details updated successfully!');
       } else {
-        // Regular members save to a draft field and flag it for review
         await updateDoc(doc(db, 'members', familyId), {
           hasPendingEdit: true,
           draftData: formData
@@ -231,7 +247,6 @@ function EditFamilyContent() {
     );
   }
 
-  // If no ID was found after fetching completes, show an error
   if (!familyId) {
     return (
       <div className="flex flex-col min-h-screen items-center justify-center bg-slate-50 p-6 text-center">
