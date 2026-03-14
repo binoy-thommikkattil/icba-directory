@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
 import TopBar from "@/components/TopBar";
+import InstallPrompt from "@/components/InstallPrompt"; // <-- 1. Import it here
 
 // 1. ADDED: Viewport settings to lock the scale for mobile app feel
 export const viewport: Viewport = {
@@ -29,9 +30,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased text-slate-900 pb-20">
         <AuthProvider>
           {/* KEPT YOUR EXACT STYLING: This keeps the desktop view looking like a phone screen! */}
-          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative border-x border-slate-100">
+          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative border-x border-slate-100 flex flex-col">
+
+            {/* 2. Drop it globally into the layout */}
+            <InstallPrompt />
+
             <TopBar />
-            {children}
+
+            <main className="flex-1">
+              {children}
+            </main>
           </div>
         </AuthProvider>
 
