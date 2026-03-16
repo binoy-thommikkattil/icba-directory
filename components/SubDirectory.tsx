@@ -19,7 +19,8 @@ const formatIST = (isoString: string) => {
 };
 
 export default function SubDirectory({ pageTitle, members, pageDescription, category }: { pageTitle: string, members: any[], pageDescription: string, category: string }) {
-  const { userProfile, user } = useAuth();
+  // 1. ADDED "role" TO useAuth
+  const { userProfile, user, role } = useAuth();
   const [activeTab, setActiveTab] = useState<'notices' | 'members'>('notices');
   
   // Directory State
@@ -33,7 +34,7 @@ export default function SubDirectory({ pageTitle, members, pageDescription, cate
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeContent, setNoticeContent] = useState('');
 
-  // 1. Fetch Notices for this specific category
+  // Fetch Notices for this specific category
   useEffect(() => {
     const q = query(collection(db, 'notices'), where('category', '==', category));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -45,14 +46,14 @@ export default function SubDirectory({ pageTitle, members, pageDescription, cate
     return () => unsubscribe();
   }, [category]);
 
-  // 2. Filter Members locally
+  // Filter Members locally
   const filteredMembers = members.filter(ind =>
     ind.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ind.familyName.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const selectedFamilyData = members.find(f => f.familyId === selectedFamilyId);
 
-  // 3. Notice Handlers
+  // Notice Handlers
   const handleOpenNoticeModal = (notice: any = null) => {
     if (notice) {
       setEditingNotice(notice);
@@ -85,6 +86,9 @@ export default function SubDirectory({ pageTitle, members, pageDescription, cate
           title: noticeTitle,
           content: noticeContent,
           authorName,
+          // 2. SAVING THE AUTHOR'S UID AND EMAIL FOR SECURITY CHECKS
+          authorUid: user?.uid || '',
+          authorEmail: user?.email || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -171,22 +175,33 @@ export default function SubDirectory({ pageTitle, members, pageDescription, cate
               </button>
 
               <div className="space-y-4">
-                {notices.map((notice) => (
-                  <div key={notice.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative group">
-                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                      <button onClick={() => handleOpenNoticeModal(notice)} className="p-1.5 bg-slate-100 text-slate-600 hover:text-teal-600 rounded-md"><Edit2 size={14}/></button>
-                      <button onClick={() => handleDeleteNotice(notice.id, notice.title)} className="p-1.5 bg-slate-100 text-slate-600 hover:text-red-600 rounded-md"><Trash2 size={14}/></button>
-                    </div>
+                {notices.map((notice) => {
+                  
+                  // 3. SECURITY CHECK: Determine if they can edit/delete this post
+                  const isOwner = user?.uid === notice.authorUid || user?.email === notice.authorEmail;
+                  const canModify = role === 'admin' || isOwner;
 
-                    <h3 className="font-bold text-lg text-slate-900 mb-2 pr-16">{notice.title}</h3>
-                    <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed mb-4">{notice.content}</p>
-                    
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-400">
-                      <span className="font-medium text-slate-500">Posted by: {notice.authorName}</span>
-                      <span className="flex items-center"><Clock size={12} className="mr-1" /> {formatIST(notice.updatedAt || notice.createdAt)}</span>
+                  return (
+                    <div key={notice.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative group">
+                      
+                      {/* 4. ONLY SHOW BUTTONS IF THEY ARE OWNER OR ADMIN */}
+                      {canModify && (
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
+                          <button onClick={() => handleOpenNoticeModal(notice)} className="p-1.5 bg-slate-100 text-slate-600 hover:text-teal-600 rounded-md"><Edit2 size={14}/></button>
+                          <button onClick={() => handleDeleteNotice(notice.id, notice.title)} className="p-1.5 bg-slate-100 text-slate-600 hover:text-red-600 rounded-md"><Trash2 size={14}/></button>
+                        </div>
+                      )}
+
+                      <h3 className="font-bold text-lg text-slate-900 mb-2 pr-16">{notice.title}</h3>
+                      <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed mb-4">{notice.content}</p>
+                      
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-400">
+                        <span className="font-medium text-slate-500">Posted by: {notice.authorName}</span>
+                        <span className="flex items-center"><Clock size={12} className="mr-1" /> {formatIST(notice.updatedAt || notice.createdAt)}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {notices.length === 0 && (
                   <div className="text-center py-10 bg-white rounded-xl border border-slate-200">
                     <Megaphone size={32} className="text-slate-300 mx-auto mb-3" />
