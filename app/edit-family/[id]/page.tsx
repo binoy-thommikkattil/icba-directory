@@ -300,7 +300,7 @@ function EditFamilyContent() {
         )}
 
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo (Optional)</h2>
+          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo</h2>
           {photoUrl && (
             <div className="relative w-full h-48 rounded-xl overflow-hidden border border-slate-200 bg-black">
               <img src={photoUrl} className="w-full h-full object-cover opacity-80" alt="Preview" />
@@ -343,7 +343,7 @@ function EditFamilyContent() {
                   <div className="flex gap-3">
                     <div className="w-1/2">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
-                      <input required placeholder="e.g. John Doe" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                      <input required placeholder="e.g. John Mark" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
                     </div>
                     <div className="w-1/2">
                       <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
@@ -362,13 +362,13 @@ function EditFamilyContent() {
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles (Comma Separated)</label>
-                    <input placeholder="e.g. Sunday School Student, Choir" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
+                    <input placeholder="e.g. Sunday School Student, Bachelor" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
                   </div>
 
                   <div className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                     <div className="w-1/3">
                       <select className="w-full p-2 border border-slate-200 rounded-md text-sm outline-none bg-white font-medium" value={member.bloodGroup} onChange={e => handleMemberChange(index, 'bloodGroup', e.target.value)}>
-                        <option value="">Blood...</option>
+                        <option value="">Blood Group</option>
                         <option value="A+">A+</option><option value="A-">A-</option>
                         <option value="B+">B+</option><option value="B-">B-</option>
                         <option value="AB+">AB+</option><option value="AB-">AB-</option>

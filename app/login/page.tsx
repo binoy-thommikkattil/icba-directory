@@ -74,7 +74,7 @@ export default function Login() {
           {isSignUp && (
             <div className="animate-in fade-in slide-in-from-top-2">
               <label className="block text-xs font-bold text-slate-500 mb-1">Full Name</label>
-              <input required type="text" placeholder="e.g. John Doe" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition" value={name} onChange={e => setName(e.target.value)} />
+              <input required type="text" placeholder="e.g. John Mark" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition" value={name} onChange={e => setName(e.target.value)} />
             </div>
           )}
           <div>
