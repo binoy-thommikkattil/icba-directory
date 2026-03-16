@@ -4,11 +4,23 @@ import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Edit2, X } from 'lucide-react';
+// ADDED CLOCK ICON HERE
+import { ArrowLeft, Plus, Trash2, Edit2, X, Clock } from 'lucide-react'; 
 import { useRouter } from 'next/navigation';
 
+// HELPER FOR EXACT IST TIME
+const formatIST = (isoString: string) => {
+  if (!isoString) return 'N/A';
+  return new Date(isoString).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+};
+
 export default function PrayerPage() {
-  const { user, loading: authLoading } = useAuth();
+  // PULLED IN userProfile TO GET THEIR REAL NAME
+  const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [prayerPoints, setPrayerPoints] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +40,10 @@ export default function PrayerPage() {
     if (!user) return;
     const q = query(collection(db, 'prayer_points'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPrayerPoints(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      // Sort so newest or most recently updated is at the top (optional but helpful!)
+      const points = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      points.sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+      setPrayerPoints(points);
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -59,7 +74,17 @@ export default function PrayerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanSubpoints = subpoints.filter(s => s.trim() !== ''); 
-    const payload = { title, subpoints: cleanSubpoints, updatedAt: new Date().toISOString() };
+    // GRAB THE AUTHOR'S NAME
+    const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
+    
+    // ATTACH IT TO THE PAYLOAD
+    const payload = { 
+      title, 
+      subpoints: cleanSubpoints, 
+      authorName,
+      updatedAt: new Date().toISOString(),
+      ...(editingId ? {} : { createdAt: new Date().toISOString() }) // Only set createdAt if new
+    };
     
     try {
       if (editingId) {
@@ -91,7 +116,6 @@ export default function PrayerPage() {
       <div className="flex justify-between items-end mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2 flex items-center">
-            {/* Swapped Heart icon for perfectly sized clasped hands */}
             <span className="text-[28px] leading-none mr-2.5" role="img" aria-label="praying hands">🙏</span> 
             Prayer Points
           </h1>
@@ -119,9 +143,11 @@ export default function PrayerPage() {
           <div className="pt-4 border-t border-slate-100 mt-4">
             <div className="flex justify-between items-center mb-3">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Specific Details (Optional)</label>
-              <button type="button" onClick={() => setSubpoints([...subpoints, ''])} className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-200 font-bold flex items-center transition">
-                <Plus size={14} className="mr-1"/> Add Row
-              </button>
+              <div className="flex justify-between items-center w-full">
+                <button type="button" onClick={() => setSubpoints([...subpoints, ''])} className="ml-auto text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-200 font-bold flex items-center transition">
+                  <Plus size={14} className="mr-1"/> Add Row
+                </button>
+              </div>
             </div>
             
             <div className="space-y-3">
@@ -146,10 +172,10 @@ export default function PrayerPage() {
         )}
         
         {prayerPoints.map((point, index) => (
-          <div key={point.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative group hover:shadow-md hover:border-rose-100 transition duration-300">
+          <div key={point.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative group hover:shadow-md hover:border-rose-100 transition duration-300 flex flex-col">
             
             {isAdmin && (
-              <div className="absolute top-5 right-5 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
+              <div className="absolute top-5 right-5 flex gap-1.5 transition">
                 <button onClick={() => handleEdit(point)} className="p-2 bg-slate-50 text-slate-500 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition"><Edit2 size={16}/></button>
                 <button onClick={() => handleDelete(point.id)} className="p-2 bg-slate-50 text-slate-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition"><Trash2 size={16}/></button>
               </div>
@@ -163,7 +189,7 @@ export default function PrayerPage() {
             </h2>
             
             {point.subpoints && point.subpoints.length > 0 && (
-              <div className="pl-11 pr-2">
+              <div className="pl-11 pr-2 flex-1">
                 <ul className="space-y-3">
                   {point.subpoints.map((sub: string, i: number) => (
                     <li key={i} className="text-slate-600 text-[15px] flex items-start">
@@ -174,6 +200,13 @@ export default function PrayerPage() {
                 </ul>
               </div>
             )}
+
+            {/* THE NEW FOOTER STAYS AT THE BOTTOM OF THE CARD */}
+            <div className="flex items-center justify-between pt-4 mt-6 border-t border-slate-100 text-xs text-slate-400">
+              <span className="font-medium text-slate-500">Updated by: {point.authorName || 'Admin'}</span>
+              <span className="flex items-center"><Clock size={12} className="mr-1" /> {formatIST(point.updatedAt || point.createdAt)}</span>
+            </div>
+            
           </div>
         ))}
       </div>

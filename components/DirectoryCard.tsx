@@ -268,7 +268,10 @@ export default function DirectoryCard({
         <div className="p-6 border-b border-slate-100 flex justify-between items-start gap-4">
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-3xl font-serif font-bold text-slate-900 break-words leading-tight mb-2">
+            <h2
+              className="text-2xl font-serif font-bold text-slate-900 truncate w-full block"
+              title={familyName}
+            >
               {familyName}
             </h2>
             {/* ONLY DISPLAY STATUS IF INACTIVE */}

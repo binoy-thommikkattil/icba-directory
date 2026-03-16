@@ -14,17 +14,17 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> 
   image.src = imageSrc;
   await new Promise((resolve) => (image.onload = resolve));
   const canvas = document.createElement('canvas');
-  
+
   // Allow a nice, high-resolution image for Firebase Storage
   let scale = 1;
-  const MAX_WIDTH = 1200; 
+  const MAX_WIDTH = 1200;
   if (pixelCrop.width > MAX_WIDTH) scale = MAX_WIDTH / pixelCrop.width;
-  
+
   canvas.width = pixelCrop.width * scale;
   canvas.height = pixelCrop.height * scale;
   const ctx = canvas.getContext('2d');
   ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
-  
+
   // Export at 90% quality for crispness
   return canvas.toDataURL('image/jpeg', 0.9);
 };
@@ -72,7 +72,7 @@ function EditFamilyContent() {
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [existingBase64, setExistingBase64] = useState(''); // Tracks existing backup
-  
+
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -96,7 +96,7 @@ function EditFamilyContent() {
           setCommendedAssembly(data.commendedAssembly || '');
           setStatus(data.status || 'Active');
           setNotes(data.notes || '');
-          
+
           // Populate existing photos (fallback to Base64 if needed)
           setPhotoUrl(data.photoUrl || data.photoBase64 || '');
           setExistingBase64(data.photoBase64 || '');
@@ -172,8 +172,8 @@ function EditFamilyContent() {
     }
 
     // --- BULLETPROOF DUAL-SAVE SYSTEM ---
-    let finalStorageUrl = photoUrl; 
-    let finalBase64Backup = existingBase64; 
+    let finalStorageUrl = photoUrl;
+    let finalBase64Backup = existingBase64;
 
     // If it is a newly cropped image, OR an old Base64 image that needs upgrading
     if (photoUrl && photoUrl.startsWith('data:image')) {
@@ -201,11 +201,11 @@ function EditFamilyContent() {
       nativeAddress,
       homeAssembly,
       commendedAssembly,
-      
+
       // Save BOTH to the database
       photoUrl: finalStorageUrl,
       photoBase64: finalBase64Backup,
-      
+
       status,
       notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
@@ -398,21 +398,22 @@ function EditFamilyContent() {
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Native Address</label>
-            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={nativeAddress} onChange={e => setNativeAddress(e.target.value)} />
+            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={nativeAddress} onChange={e => setNativeAddress(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Home Assembly</label>
-              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={homeAssembly} onChange={e => setHomeAssembly(e.target.value)} />
+              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={homeAssembly} onChange={e => setHomeAssembly(e.target.value)} />
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Commended Assembly</label>
-              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={commendedAssembly} onChange={e => setCommendedAssembly(e.target.value)} />
+              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={commendedAssembly} onChange={e => setCommendedAssembly(e.target.value)} />
             </div>
           </div>
+
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Additional Information</label>
-            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={notes} onChange={e => setNotes(e.target.value)} />
+            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
         </div>
 
