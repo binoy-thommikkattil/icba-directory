@@ -82,6 +82,8 @@ export default function PrayerPage() {
       title, 
       subpoints: cleanSubpoints, 
       authorName,
+      authorUid: user?.uid || '',
+      authorEmail: user?.email || '',
       updatedAt: new Date().toISOString(),
       ...(editingId ? {} : { createdAt: new Date().toISOString() }) // Only set createdAt if new
     };
@@ -203,7 +205,7 @@ export default function PrayerPage() {
 
             {/* THE NEW FOOTER STAYS AT THE BOTTOM OF THE CARD */}
             <div className="flex items-center justify-between pt-4 mt-6 border-t border-slate-100 text-xs text-slate-400">
-              <span className="font-medium text-slate-500">Updated by: {point.authorName || 'Admin'}</span>
+              <span className="font-medium text-slate-500">Updated by: {point.authorName || 'Unknown Member'}</span>
               <span className="flex items-center"><Clock size={12} className="mr-1" /> {formatIST(point.updatedAt || point.createdAt)}</span>
             </div>
             
