@@ -62,7 +62,7 @@ export default function DirectoryCard({
   onSwipeLeft, onSwipeRight
 }: MemberProps) {
 
-  const { user } = useAuth();
+  const { user, role, userProfile } = useAuth();
   const [isSharing, setIsSharing] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
@@ -86,7 +86,7 @@ export default function DirectoryCard({
 
   const handleSharePDF = async () => {
     setIsSharing(true);
-    await logActivity(user, "Exported/Shared Card", `Exported the directory card for the ${familyName}.`);
+    await logActivity(userProfile, "Exported/Shared Card", `Exported the directory card for the ${familyName}.`);
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
