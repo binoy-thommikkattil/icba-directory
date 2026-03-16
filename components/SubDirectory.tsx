@@ -186,7 +186,7 @@ export default function SubDirectory({ pageTitle, members, pageDescription, cate
                       
                       {/* 4. ONLY SHOW BUTTONS IF THEY ARE OWNER OR ADMIN */}
                       {canModify && (
-                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
+                        <div className="absolute top-4 right-4 flex gap-2">
                           <button onClick={() => handleOpenNoticeModal(notice)} className="p-1.5 bg-slate-100 text-slate-600 hover:text-teal-600 rounded-md"><Edit2 size={14}/></button>
                           <button onClick={() => handleDeleteNotice(notice.id, notice.title)} className="p-1.5 bg-slate-100 text-slate-600 hover:text-red-600 rounded-md"><Trash2 size={14}/></button>
                         </div>
