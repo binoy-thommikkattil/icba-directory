@@ -304,25 +304,25 @@ export default function AddFamily() {
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Info</h2>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Current Address *</label>
-            <textarea required rows={3} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={currentAddress} onChange={e => setCurrentAddress(e.target.value)} />
+            <textarea required rows={3} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={currentAddress} onChange={e => setCurrentAddress(e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Native Address</label>
-            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={nativeAddress} onChange={e => setNativeAddress(e.target.value)} />
+            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={nativeAddress} onChange={e => setNativeAddress(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Home Assembly</label>
-              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={homeAssembly} onChange={e => setHomeAssembly(e.target.value)} />
+              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={homeAssembly} onChange={e => setHomeAssembly(e.target.value)} />
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Commended Assembly</label>
-              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={commendedAssembly} onChange={e => setCommendedAssembly(e.target.value)} />
+              <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={commendedAssembly} onChange={e => setCommendedAssembly(e.target.value)} />
             </div>
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Additional Information</label>
-            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={notes} onChange={e => setNotes(e.target.value)} />
+            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
         </div>
 

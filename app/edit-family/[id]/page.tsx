@@ -394,7 +394,7 @@ function EditFamilyContent() {
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Info</h2>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Current Address *</label>
-            <textarea required rows={3} className="w-full p-3 border border-slate-300 rounded-lg outline-none" value={currentAddress} onChange={e => setCurrentAddress(e.target.value)} />
+            <textarea required rows={3} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={currentAddress} onChange={e => setCurrentAddress(e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Native Address</label>
