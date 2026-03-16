@@ -1,15 +1,22 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+// ADDED: where and onSnapshot for our access scanner
+import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function Dashboard() {
-  const { user, role, loading } = useAuth();
+  // ADDED: userProfile so we can match their name
+  const { user, role, userProfile, loading } = useAuth();
   const router = useRouter();
+
+  // NEW STATE: Visibility toggles for the three private buttons
+  const [showYouth, setShowYouth] = useState(false);
+  const [showBachelors, setShowBachelors] = useState(false);
+  const [showSundaySchool, setShowSundaySchool] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -18,7 +25,53 @@ export default function Dashboard() {
     }
   }, [user, role, loading, router]);
 
+  // NEW EFFECT: The Access Scanner
+  useEffect(() => {
+    // If they are an admin, show everything immediately and skip the database check
+    if (role === 'admin') {
+      setShowYouth(true);
+      setShowBachelors(true);
+      setShowSundaySchool(true);
+      return;
+    }
+
+    // If they aren't loaded yet, do nothing
+    if (!userProfile) return;
+
+    const q = query(collection(db, 'members'), where('isPendingCreation', '==', false), where('status', '==', 'Active'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let inYouth = false;
+      let inBachelors = false;
+      let inSundaySchool = false;
+
+      snapshot.docs.forEach(doc => {
+        const family = doc.data();
+        const isMyFamily = family.submittedBy === userProfile?.name || family.authorEmail === user?.email;
+
+        family.members?.forEach((member: any) => {
+          // Check if this specific member in the loop matches our logged-in user OR if they own the family
+          const isMatch = member.name?.toLowerCase() === userProfile?.name?.toLowerCase() || isMyFamily;
+
+          if (isMatch && member.tags) {
+            const tags = member.tags.map((t: string) => t.toLowerCase());
+            
+            if (tags.some((t: string) => t.includes('youth') || t.includes('young family'))) inYouth = true;
+            if (tags.some((t: string) => t.includes('bachelor') || t.includes('spinster') || t.includes('unmarried'))) inBachelors = true;
+            if (tags.some((t: string) => t.includes('sunday school'))) inSundaySchool = true;
+          }
+        });
+      });
+
+      setShowYouth(inYouth);
+      setShowBachelors(inBachelors);
+      setShowSundaySchool(inSundaySchool);
+    });
+
+    return () => unsubscribe();
+  }, [role, userProfile, user]);
+
   if (loading || !user) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-teal-600" size={32} /></div>;
+
   const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -33,19 +86,16 @@ export default function Dashboard() {
       const familiesMap = new Map();
 
       for (const row of rows) {
-        // We assign default empty strings right here during destructuring
         const [
           familyName = '', primaryMobile = '', currentAddress = '', nativeAddress = '',
           homeAssembly = '', commendedAssembly = '', notes = '',
           memberName = '', bloodGroup = '', willingToDonate = '', tags = ''
         ] = row.split(',').map(s => s?.trim() || '');
 
-        // Skip rows that don't at least have a mobile number
         if (!primaryMobile) continue;
 
         if (!familiesMap.has(primaryMobile)) {
           familiesMap.set(primaryMobile, {
-            // Using || '' ensures absolutely NO undefined values reach Firebase
             familyName: familyName || '',
             primaryMobile: primaryMobile || '',
             currentAddress: currentAddress || '',
@@ -82,12 +132,12 @@ export default function Dashboard() {
         }
       }
 
-      // Clear the file input so you can upload the same file again if needed
       event.target.value = '';
       alert(`Success! Grouped and uploaded ${successCount} distinct families.`);
     };
     reader.readAsText(file);
   };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 pb-24">
       <header className="mb-8">
@@ -116,20 +166,27 @@ export default function Dashboard() {
           </div>
         </Link>
 
-        <Link href="/youth" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Youth Group</h2><p className="text-sm text-slate-500">Youth & young families</p></div>
-        </Link>
+        {/* CONDITIONALLY RENDERED BUTTONS */}
+        {showYouth && (
+          <Link href="/youth" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-400 transition flex items-center gap-4 group animate-in fade-in">
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
+            <div><h2 className="font-bold text-slate-800 text-lg">Youth Group</h2><p className="text-sm text-slate-500">Youth & young families</p></div>
+          </Link>
+        )}
 
-        <Link href="/bachelors" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Bachelor Meeting Members</h2><p className="text-sm text-slate-500">Bachelor Meeting Members</p></div>
-        </Link>
+        {showBachelors && (
+          <Link href="/bachelors" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 transition flex items-center gap-4 group animate-in fade-in">
+            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
+            <div><h2 className="font-bold text-slate-800 text-lg">Bachelor Meeting Members</h2><p className="text-sm text-slate-500">Bachelor Meeting Members</p></div>
+          </Link>
+        )}
 
-        <Link href="/sunday-school" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Sunday School</h2><p className="text-sm text-slate-500">Students & Teachers</p></div>
-        </Link>
+        {showSundaySchool && (
+          <Link href="/sunday-school" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-400 transition flex items-center gap-4 group animate-in fade-in">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
+            <div><h2 className="font-bold text-slate-800 text-lg">Sunday School</h2><p className="text-sm text-slate-500">Students & Teachers</p></div>
+          </Link>
+        )}
 
         <Link href="/blood-registry" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition"><Droplet size={24} /></div>
