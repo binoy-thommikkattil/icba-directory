@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History } from 'lucide-react';
+import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History, BookOpen } from 'lucide-react';
 // ADDED: where and onSnapshot for our access scanner
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -146,6 +146,17 @@ export default function Dashboard() {
 
       {/* CORE MEMBER FEATURES */}
       <div className="grid grid-cols-1 gap-4 mb-6">
+        {/* NEW STATEMENT OF FAITH BUTTON */}
+        <Link href="/beliefs" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
+            <BookOpen size={24} />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-lg">Our Beliefs</h2>
+            <p className="text-sm text-slate-500">Statement of Faith</p>
+          </div>
+        </Link>
+        
         <Link href="/directory" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
           <div><h2 className="font-bold text-slate-800 text-lg">Directory</h2><p className="text-sm text-slate-500">Search families and members</p></div>
