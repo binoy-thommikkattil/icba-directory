@@ -348,23 +348,36 @@ export default function DirectoryCard({
                   <a href={`tel:${primaryMobile}`} className="font-medium hover:text-teal-700">{primaryMobile}</a>
                 </div>
               )}
+              {/* CLICKABLE CURRENT ADDRESS */}
               {currentAddress && (
-                <div className="flex items-start gap-3">
-                  <MapPin size={20} className="text-teal-600 mt-1 shrink-0" />
+                <a
+                  href={`http://maps.google.com/?q=${encodeURIComponent(currentAddress)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 group block"
+                >
+                  <MapPin size={20} className="text-teal-600 mt-1 shrink-0 group-hover:text-teal-800 transition" />
                   <div>
-                    <p className="leading-snug text-sm font-bold text-slate-800 mb-0.5">Current Address</p>
-                    <p className="leading-snug">{currentAddress}</p>
+                    <p className="leading-snug text-sm font-bold text-slate-800 mb-0.5 group-hover:text-teal-700 transition">Current Address</p>
+                    <p className="leading-snug group-hover:text-teal-600 transition">{currentAddress}</p>
                   </div>
-                </div>
+                </a>
               )}
+
+              {/* CLICKABLE NATIVE ADDRESS */}
               {nativeAddress && (
-                <div className="flex items-start gap-3">
-                  <MapPin size={20} className="text-slate-400 mt-1 shrink-0" />
+                <a
+                  href={`http://maps.google.com/?q=${encodeURIComponent(nativeAddress)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 group block"
+                >
+                  <MapPin size={20} className="text-slate-400 mt-1 shrink-0 group-hover:text-teal-600 transition" />
                   <div>
-                    <p className="leading-snug text-sm font-bold text-slate-800 mb-0.5">Native Address</p>
-                    <p className="leading-snug text-slate-600">{nativeAddress}</p>
+                    <p className="leading-snug text-sm font-bold text-slate-800 mb-0.5 group-hover:text-teal-700 transition">Native Address</p>
+                    <p className="leading-snug text-slate-600 group-hover:text-teal-600 transition">{nativeAddress}</p>
                   </div>
-                </div>
+                </a>
               )}
             </div>
           </div>
