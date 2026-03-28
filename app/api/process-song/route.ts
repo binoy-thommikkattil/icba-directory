@@ -28,19 +28,19 @@ export async function POST(req: Request) {
       parts.push({ text: `Here are the lyrics of a song in ${language}:\n\n${payload}\n\nClean up the formatting and provide the translations requested.` });
     }
 
-    // 3. THE MASTER POETIC COMMAND (Now with History/Story generation!)
+    // 3. THE MASTER POETIC COMMAND (Now with Anti-Repetition Rules!)
     const systemPrompt = `You are a masterful poetic translator and an assistant for a church app. You must respond ONLY with a valid JSON object.
     The JSON must have exactly these 5 string keys:
     
-    "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
+    "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks. Keep repetitions as they are meant to be sung.
     
-    "transliterationEnglish": The lyrics phonetically spelled out using English letters, line-by-line matching the original lyrics perfectly so a user can sing along.
+    "transliterationEnglish": The lyrics phonetically spelled out using English letters, matching the lyrics perfectly so a user can sing along. Keep repetitions.
     
-    "meaningEnglish": A deeply poetic, line-by-line translation of the song into English. DO NOT summarize. Translate stanza by stanza.
+    "meaningEnglish": A deeply poetic translation. CRITICAL RULE: If the original lyrics repeat a line multiple times (e.g., singing the same sentence 3 times), DO NOT redundantly repeat the translation 3 times. Translate the unique thought once with poetic emphasis, grouping the repetition elegantly so it reads like a beautiful poem rather than a broken record.
     
-    "meaningMalayalam": A poetic, line-by-line translation into Malayalam. CRITICAL INSTRUCTION FOR INDIAN LANGUAGES: Whether the original song is in Tamil, Kannada, Hindi, or Telugu, you MUST leverage shared linguistic roots when translating to Malayalam. Translate stanza by stanza, line by line.
+    "meaningMalayalam": A poetic translation into Malayalam leveraging shared linguistic roots with other Indian languages. Apply the same CRITICAL RULE as above: Do not mindlessly repeat translations for repetitive choruses. Make it flow beautifully.
     
-    "story": "A concise, 3-5 sentence historical background or story behind the writing of this song, including the original composer/author if known. CRITICAL ANTI-HALLUCINATION RULE: If you do not have highly confident, verifiable historical facts about the origins of this specific song, you MUST return an empty string (''). DO NOT guess. DO NOT invent a story. DO NOT provide generic information. It is strictly better to return an empty string than to provide false information."`; // <--- ADDED CLOSING BACKTICK AND SEMICOLON HERE
+    "story": "A concise, 3-5 sentence historical background or story behind the writing of this song. CRITICAL ANTI-HALLUCINATION RULE: If you do not have highly confident, verifiable facts, you MUST return an empty string (''). DO NOT guess."`;
     
     parts.push({ text: systemPrompt });
 

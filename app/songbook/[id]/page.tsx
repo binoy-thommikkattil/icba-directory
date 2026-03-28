@@ -25,12 +25,13 @@ export default function ViewSongPage() {
   const [song, setSong] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // LEVEL 1: Main Tabs (Added 'story' as a valid tab type)
+  // LEVEL 1: Main Tabs
   const [activeTab, setActiveTab] = useState<'lyrics' | 'meaning' | 'story' | 'image'>('lyrics');
   
-  // LEVEL 2: Sub-Toggles (State)
+  // LEVEL 2: Sub-Toggles & Text Size State
   const [lyricsView, setLyricsView] = useState<'original' | 'english'>('original');
   const [meaningView, setMeaningView] = useState<'english' | 'malayalam'>('english');
+  const [isLargeText, setIsLargeText] = useState(false); // NEW: Font size toggle state
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -77,6 +78,13 @@ export default function ViewSongPage() {
   const isEnglish = song.language === 'English';
   const isMalayalam = song.language === 'Malayalam';
 
+  // DYNAMIC TEXT SIZING CLASSES
+  const dynamicTextSize = isLargeText 
+    ? 'text-2xl md:text-3xl leading-loose font-medium' 
+    : 'text-lg md:text-xl leading-relaxed';
+    
+  const baseTextClasses = `font-sans whitespace-pre-wrap transition-all duration-300 text-slate-800 ${dynamicTextSize}`;
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 pb-24">
       <div className="max-w-3xl mx-auto">
@@ -88,6 +96,16 @@ export default function ViewSongPage() {
           </Link>
           
           <div className="flex gap-2">
+            {/* NEW: FONT SIZE TOGGLE BUTTON */}
+            <button 
+              onClick={() => setIsLargeText(!isLargeText)} 
+              className={`px-3 py-2 border rounded-lg transition shadow-sm flex items-end justify-center gap-0.5 ${isLargeText ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-sky-50'}`}
+              title={isLargeText ? "Make text smaller" : "Make text larger"}
+            >
+              <span className="text-xs font-bold leading-none">A</span>
+              <span className="text-base font-bold leading-none">A</span>
+            </button>
+
             {/* EVERYONE CAN EDIT */}
             <Link href={`/songbook/${song.id}/edit`} className="p-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition shadow-sm">
               <Edit2 size={18} />
@@ -163,7 +181,8 @@ export default function ViewSongPage() {
                   </div>
                 )}
                 
-                <div className="text-slate-800 text-xl leading-relaxed whitespace-pre-wrap font-medium text-center">
+                {/* APPLIED DYNAMIC FONT CLASSES (Centered) */}
+                <div className={`${baseTextClasses} text-center`}>
                   {lyricsView === 'original' ? song.lyrics : (song.transliterationEnglish || song.lyrics)}
                 </div>
               </div>
@@ -175,11 +194,11 @@ export default function ViewSongPage() {
                 
                 {/* 3. SMART LOGIC FOR MEANING TOGGLES */}
                 {isMalayalam ? (
-                  <div className="text-slate-600 leading-relaxed text-center italic bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <div className={`${baseTextClasses} text-center italic !text-slate-600 bg-slate-50 p-6 rounded-2xl border border-slate-100`}>
                     {song.meaningEnglish || "English meaning not available for this Malayalam song."}
                   </div>
                 ) : isEnglish ? (
-                  <div className="text-slate-600 leading-relaxed text-center italic bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <div className={`${baseTextClasses} text-center italic !text-slate-600 bg-slate-50 p-6 rounded-2xl border border-slate-100`}>
                     {song.meaningMalayalam || "Malayalam meaning not available for this English song."}
                   </div>
                 ) : (
@@ -195,7 +214,8 @@ export default function ViewSongPage() {
                               Malayalam
                             </button>
                           </div>
-                          <div className="text-slate-600 leading-relaxed text-center italic bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                          {/* APPLIED DYNAMIC FONT CLASSES (Centered) */}
+                          <div className={`${baseTextClasses} text-center italic !text-slate-600 bg-slate-50 p-6 rounded-2xl border border-slate-100`}>
                             {meaningView === 'english' ? (song.meaningEnglish || "English meaning not available.") : (song.meaningMalayalam || "Malayalam meaning not available.")}
                           </div>
                         </>
@@ -214,7 +234,8 @@ export default function ViewSongPage() {
                   <h3 className="text-lg font-serif font-bold text-slate-800 mb-4 flex items-center">
                     <Info size={20} className="mr-2 text-sky-500"/> The Story Behind the Song
                   </h3>
-                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{song.story}</p>
+                  {/* APPLIED DYNAMIC FONT CLASSES (Left Aligned) */}
+                  <div className={`${baseTextClasses} text-left`}>{song.story}</div>
                 </div>
               </div>
             )}
