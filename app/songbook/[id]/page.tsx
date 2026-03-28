@@ -5,7 +5,6 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-// ADDED User icon for the composer display
 import { ArrowLeft, Edit2, Trash2, Loader2, Music, BookOpen, ImageIcon, Clock, Info, User } from 'lucide-react';
 
 // Helper for exact IST Time
@@ -26,8 +25,8 @@ export default function ViewSongPage() {
   const [song, setSong] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // LEVEL 1: Main Tabs
-  const [activeTab, setActiveTab] = useState<'lyrics' | 'meaning' | 'image'>('lyrics');
+  // LEVEL 1: Main Tabs (Added 'story' as a valid tab type)
+  const [activeTab, setActiveTab] = useState<'lyrics' | 'meaning' | 'story' | 'image'>('lyrics');
   
   // LEVEL 2: Sub-Toggles (State)
   const [lyricsView, setLyricsView] = useState<'original' | 'english'>('original');
@@ -116,20 +115,29 @@ export default function ViewSongPage() {
           </div>
         </div>
 
-        {/* 2. COMPLETELY REDESIGNED TAB CONTAINER BASED ON SNAPSHOT */}
+        {/* 2. COMPLETELY REDESIGNED TAB CONTAINER */}
         <div className="space-y-6">
           
-          {/* LEVEL 1: Centered Pill Toggle exactly like in your attached wireframe image */}
-          <div className="flex justify-center">
-            <div className="inline-flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-              <button onClick={() => setActiveTab('lyrics')} className={`flex items-center justify-center px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'lyrics' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
+          {/* LEVEL 1: Centered Pill Toggle with horizontal scrolling for mobile */}
+          <div className="flex justify-center overflow-x-auto hide-scrollbar">
+            <div className="inline-flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm whitespace-nowrap">
+              <button onClick={() => setActiveTab('lyrics')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'lyrics' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
                 <Music size={16} className="mr-2"/> Lyrics
               </button>
-              <button onClick={() => setActiveTab('meaning')} className={`flex items-center justify-center px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'meaning' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
+              
+              <button onClick={() => setActiveTab('meaning')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'meaning' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
                 <BookOpen size={16} className="mr-2"/> Meaning
               </button>
+
+              {/* NEW CONDITIONAL STORY TAB */}
+              {song.story && (
+                <button onClick={() => setActiveTab('story')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'story' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Info size={16} className="mr-2"/> Story
+                </button>
+              )}
+
               {song.imageUrl && (
-                <button onClick={() => setActiveTab('image')} className={`flex items-center justify-center px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'image' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => setActiveTab('image')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'image' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
                   <ImageIcon size={16} className="mr-2"/> Original Photo
                 </button>
               )}
@@ -143,7 +151,7 @@ export default function ViewSongPage() {
             {activeTab === 'lyrics' && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
                 
-                {/* LEVEL 2 TOGGLE FOR LYRICS (Matches wireframe style) */}
+                {/* LEVEL 2 TOGGLE FOR LYRICS */}
                 {!isEnglish && song.transliterationEnglish && (
                   <div className="flex bg-slate-100 p-1 rounded-xl mb-8 max-w-sm mx-auto border border-slate-200">
                     <button onClick={() => setLyricsView('original')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${lyricsView === 'original' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}>
@@ -165,29 +173,20 @@ export default function ViewSongPage() {
             {activeTab === 'meaning' && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
                 
-                {/* 3. UPDATED SMART LOGIC FOR MEANING TOGGLES */}
-                
-                {/* CASE A: It's a Malayalam Song - No one needs a redundant Malayalam summary.
-                    Hide the Malayalam meaning button and only show English meaning without a toggle. */}
+                {/* 3. SMART LOGIC FOR MEANING TOGGLES */}
                 {isMalayalam ? (
                   <div className="text-slate-600 leading-relaxed text-center italic bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     {song.meaningEnglish || "English meaning not available for this Malayalam song."}
                   </div>
-                ) 
-                
-                // CASE B: It's an English Song - Hide the English meaning toggle and only show Malayalam meaning.
-                : isEnglish ? (
+                ) : isEnglish ? (
                   <div className="text-slate-600 leading-relaxed text-center italic bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     {song.meaningMalayalam || "Malayalam meaning not available for this English song."}
                   </div>
-                )
-                
-                // CASE C: All Other Languages - Show the standard toggle between English and Malayalam meaning.
-                : (
+                ) : (
                    <>
                     {(song.meaningEnglish || song.meaningMalayalam) ? (
                         <>
-                          {/* LEVEL 2 TOGGLE FOR MEANING (Matches wireframe style) */}
+                          {/* LEVEL 2 TOGGLE FOR MEANING */}
                           <div className="flex bg-slate-100 p-1 rounded-xl mb-8 max-w-sm mx-auto border border-slate-200">
                             <button onClick={() => setMeaningView('english')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${meaningView === 'english' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}>
                               English
@@ -205,16 +204,18 @@ export default function ViewSongPage() {
                       )}
                     </>
                 )}
+              </div>
+            )}
 
-                {/* STORY BEHIND THE SONG */}
-                {song.story && (
-                  <div className="mt-10 pt-8 border-t border-slate-100 text-left bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center">
-                      <Info size={16} className="mr-2 text-sky-500"/> The Story Behind the Song
-                    </h3>
-                    <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{song.story}</p>
-                  </div>
-                )}
+            {/* NEW STORY TAB CONTENT */}
+            {activeTab === 'story' && song.story && (
+              <div className="animate-in fade-in slide-in-from-bottom-2">
+                 <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 text-left">
+                  <h3 className="text-lg font-serif font-bold text-slate-800 mb-4 flex items-center">
+                    <Info size={20} className="mr-2 text-sky-500"/> The Story Behind the Song
+                  </h3>
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{song.story}</p>
+                </div>
               </div>
             )}
 
