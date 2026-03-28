@@ -28,22 +28,29 @@ export default function SongbookHub() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
-      // ALPHABETICAL SORTING LOGIC ADDED HERE
+      // 1. Sort the songs alphabetically first
       fetchedSongs.sort((a: any, b: any) => {
         const titleA = (a.title || '').toLowerCase();
         const titleB = (b.title || '').toLowerCase();
         return titleA.localeCompare(titleB);
       });
       
-      setSongs(fetchedSongs);
+      // 2. Assign a beautiful sequential number based on their alphabetical position
+      const visuallyNumberedSongs = fetchedSongs.map((song, index) => ({
+        ...song,
+        displayNumber: index + 1
+      }));
+      
+      setSongs(visuallyNumberedSongs);
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, [user]);
 
   const filteredSongs = songs.filter(song => {
+    // 3. Update the search to filter by the new dynamic 'displayNumber'
     const matchesSearch = 
-      (song.songNumber && song.songNumber.toString().includes(searchTerm)) || 
+      (song.displayNumber && song.displayNumber.toString().includes(searchTerm)) || 
       (song.title && song.title.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesLanguage = activeLanguage === 'All' || song.language === activeLanguage;
     return matchesSearch && matchesLanguage;
@@ -97,7 +104,7 @@ export default function SongbookHub() {
             filteredSongs.map((song) => (
               <Link href={`/songbook/${song.id}`} key={song.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:border-sky-400 transition flex items-center gap-4 group">
                 <div className="w-12 h-12 shrink-0 bg-sky-50 text-sky-600 font-bold text-lg rounded-xl flex items-center justify-center border border-sky-100">
-                  {song.songNumber || '#'}
+                  {song.displayNumber}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-serif font-bold text-lg text-slate-900 truncate">{song.title}</h3>
