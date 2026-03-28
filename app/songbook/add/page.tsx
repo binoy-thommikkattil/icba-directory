@@ -17,6 +17,7 @@ export default function AddSongPage() {
 
   // Form State
   const [title, setTitle] = useState('');
+  const [originalAuthor, setOriginalAuthor] = useState(''); // NEW FIELD ADDED HERE
   const [language, setLanguage] = useState('Malayalam');
   const [story, setStory] = useState('');
   
@@ -76,7 +77,6 @@ export default function AddSongPage() {
 
         if (useOCR) {
           setSubmissionStatus('AI is extracting text and generating translations... (Takes 5-10 seconds)');
-          // INNER TRY-CATCH: If AI fails, we don't break the whole save process!
           try {
             const apiRes = await fetch('/api/process-song', {
               method: 'POST',
@@ -98,10 +98,9 @@ export default function AddSongPage() {
           }
         }
       } 
-      // 3. HANDLE TEXT UPLOAD (Only run AI if it's not English)
+      // 3. HANDLE TEXT UPLOAD
       else if (inputMethod === 'text' && language !== 'English') {
         setSubmissionStatus('AI is generating transliteration and meaning... (Takes 5-10 seconds)');
-        // INNER TRY-CATCH: If AI fails, we don't break the whole save process!
         try {
           const apiRes = await fetch('/api/process-song', {
             method: 'POST',
@@ -130,6 +129,7 @@ export default function AddSongPage() {
         title,
         songNumber: nextSongNumber,
         language,
+        originalAuthor, // NEW FIELD SAVED TO DB HERE
         lyrics: extractedLyrics, 
         transliterationEnglish: finalTransliteration,
         meaningEnglish: finalMeaningEng,
@@ -173,6 +173,13 @@ export default function AddSongPage() {
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Song Title *</label>
               <input required type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Enna Ninne (What a Friend)" />
             </div>
+            
+            {/* COMPOSER FIELD ADDED HERE */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Composer / Original Author (Optional)</label>
+              <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition" value={originalAuthor} onChange={e => setOriginalAuthor(e.target.value)} placeholder="e.g. Fanny Crosby" />
+            </div>
+
             <div className="col-span-1 md:col-span-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Original Language *</label>
               <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition font-medium" value={language} onChange={e => setLanguage(e.target.value)}>

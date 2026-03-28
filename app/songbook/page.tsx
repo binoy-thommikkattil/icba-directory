@@ -16,7 +16,6 @@ export default function SongbookHub() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLanguage, setActiveLanguage] = useState('All');
 
-  // ADDED HINDI HERE
   const languages = ['All', 'Malayalam', 'English', 'Tamil', 'Kannada', 'Hindi'];
 
   useEffect(() => {
@@ -28,7 +27,14 @@ export default function SongbookHub() {
     const q = query(collection(db, 'songs'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      fetchedSongs.sort((a: any, b: any) => (Number(a.songNumber) || 0) - (Number(b.songNumber) || 0));
+      
+      // ALPHABETICAL SORTING LOGIC ADDED HERE
+      fetchedSongs.sort((a: any, b: any) => {
+        const titleA = (a.title || '').toLowerCase();
+        const titleB = (b.title || '').toLowerCase();
+        return titleA.localeCompare(titleB);
+      });
+      
       setSongs(fetchedSongs);
       setIsLoading(false);
     });
@@ -70,7 +76,6 @@ export default function SongbookHub() {
           <input type="text" placeholder="Type a song number (e.g. 42) or title..." className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
-        {/* FIXED: Changed to flex-wrap so it doesn't scroll! */}
         <div className="flex flex-wrap gap-2 mb-6">
           {languages.map(lang => (
             <button
