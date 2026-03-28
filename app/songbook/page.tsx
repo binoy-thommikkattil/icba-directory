@@ -16,7 +16,8 @@ export default function SongbookHub() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLanguage, setActiveLanguage] = useState('All');
 
-  const languages = ['All', 'Malayalam', 'English', 'Tamil', 'Kannada'];
+  // ADDED HINDI HERE
+  const languages = ['All', 'Malayalam', 'English', 'Tamil', 'Kannada', 'Hindi'];
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -26,26 +27,19 @@ export default function SongbookHub() {
     if (!user) return;
     const q = query(collection(db, 'songs'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // THE VERCEL FIX 1: Added "as any" to tell TypeScript to accept the dynamic Firebase data
       const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
-      // THE VERCEL FIX 2: Explicitly typed 'a' and 'b' as "any" so it doesn't look for songNumber on a strict object
       fetchedSongs.sort((a: any, b: any) => (Number(a.songNumber) || 0) - (Number(b.songNumber) || 0));
-      
       setSongs(fetchedSongs);
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, [user]);
 
-  // Filter by search term (number or title) AND active language tab
   const filteredSongs = songs.filter(song => {
     const matchesSearch = 
       (song.songNumber && song.songNumber.toString().includes(searchTerm)) || 
       (song.title && song.title.toLowerCase().includes(searchTerm.toLowerCase()));
-      
     const matchesLanguage = activeLanguage === 'All' || song.language === activeLanguage;
-    
     return matchesSearch && matchesLanguage;
   });
 
@@ -66,31 +60,23 @@ export default function SongbookHub() {
             </h1>
             <p className="text-slate-500 text-sm">Search by number or title</p>
           </div>
-          
           <Link href="/songbook/add" className="bg-sky-50 text-sky-700 border border-sky-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-sky-100 transition flex items-center shadow-sm">
             <Plus size={16} className="mr-1" /> Add Song
           </Link>
         </div>
 
-        {/* SEARCH BAR */}
         <div className="relative mb-6">
           <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
-          <input
-            type="text"
-            placeholder="Type a song number (e.g. 42) or title..."
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm font-medium"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <input type="text" placeholder="Type a song number (e.g. 42) or title..." className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
-        {/* LANGUAGE TABS */}
-        <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-6 pb-2">
+        {/* FIXED: Changed to flex-wrap so it doesn't scroll! */}
+        <div className="flex flex-wrap gap-2 mb-6">
           {languages.map(lang => (
             <button
               key={lang}
               onClick={() => setActiveLanguage(lang)}
-              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition shadow-sm ${
+              className={`px-4 py-2 rounded-full text-sm font-bold transition shadow-sm ${
                 activeLanguage === lang 
                   ? 'bg-sky-600 text-white' 
                   : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
@@ -101,24 +87,18 @@ export default function SongbookHub() {
           ))}
         </div>
 
-        {/* SONG LIST */}
         <div className="space-y-3">
           {filteredSongs.length > 0 ? (
             filteredSongs.map((song) => (
-              <Link 
-                href={`/songbook/${song.id}`} 
-                key={song.id} 
-                className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:border-sky-400 transition flex items-center gap-4 group"
-              >
+              <Link href={`/songbook/${song.id}`} key={song.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:border-sky-400 transition flex items-center gap-4 group">
                 <div className="w-12 h-12 shrink-0 bg-sky-50 text-sky-600 font-bold text-lg rounded-xl flex items-center justify-center border border-sky-100">
                   {song.songNumber || '#'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-serif font-bold text-lg text-slate-900 truncate">{song.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md uppercase tracking-wider">
-                      {song.language || 'Unknown'}
-                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md uppercase tracking-wider">{song.language || 'Unknown'}</span>
+                    {song.originalAuthor && <span className="text-xs text-slate-400 truncate border-l border-slate-200 pl-2">By {song.originalAuthor}</span>}
                   </div>
                 </div>
               </Link>
@@ -130,7 +110,6 @@ export default function SongbookHub() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

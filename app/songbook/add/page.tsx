@@ -180,6 +180,7 @@ export default function AddSongPage() {
                 <option value="English">English</option>
                 <option value="Tamil">Tamil</option>
                 <option value="Kannada">Kannada</option>
+                <option value="Hindi">Hindi</option>
               </select>
             </div>
           </div>
