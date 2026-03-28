@@ -28,17 +28,19 @@ export async function POST(req: Request) {
       parts.push({ text: `Here are the lyrics of a song in ${language}:\n\n${payload}\n\nClean up the formatting and provide the translations requested.` });
     }
 
-    // 3. THE MASTER POETIC COMMAND (Future-Proofed for all Indian Languages)
+    // 3. THE MASTER POETIC COMMAND (Now with History/Story generation!)
     const systemPrompt = `You are a masterful poetic translator and an assistant for a church app. You must respond ONLY with a valid JSON object.
-    The JSON must have exactly these 4 string keys:
+    The JSON must have exactly these 5 string keys:
     
     "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
     
     "transliterationEnglish": The lyrics phonetically spelled out using English letters, line-by-line matching the original lyrics perfectly so a user can sing along.
     
-    "meaningEnglish": A deeply poetic, line-by-line translation of the song into English. DO NOT summarize. Translate stanza by stanza, capturing the emotion, grace, and profound beauty of the original text.
+    "meaningEnglish": A deeply poetic, line-by-line translation of the song into English. DO NOT summarize. Translate stanza by stanza.
     
-    "meaningMalayalam": A poetic, line-by-line translation into Malayalam. CRITICAL INSTRUCTION FOR INDIAN LANGUAGES: Whether the original song is in Tamil, Kannada, Hindi, or Telugu, you MUST leverage shared linguistic roots (like Dravidian phonetics or shared Sanskrit vocabulary) when translating to Malayalam. The Malayalam translation should flow and rhyme remarkably like the original song, preserving its musical meter and soul. Do not use overly formal/modern Malayalam if a shared root word exists that retains the poetic beauty. Translate stanza by stanza, line by line.`;
+    "meaningMalayalam": A poetic, line-by-line translation into Malayalam. CRITICAL INSTRUCTION FOR INDIAN LANGUAGES: Whether the original song is in Tamil, Kannada, Hindi, or Telugu, you MUST leverage shared linguistic roots when translating to Malayalam. Translate stanza by stanza, line by line.
+    
+    "story": "A concise, 3-5 sentence historical background or story behind the writing of this song, including the original composer/author if known. CRITICAL ANTI-HALLUCINATION RULE: If you do not have highly confident, verifiable historical facts about the origins of this specific song, you MUST return an empty string (''). DO NOT guess. DO NOT invent a story. DO NOT provide generic information. It is strictly better to return an empty string than to provide false information."`; // <--- ADDED CLOSING BACKTICK AND SEMICOLON HERE
     
     parts.push({ text: systemPrompt });
 
