@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-// ADDED: getDocs, query, orderBy, limit to find the highest song number
 import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -16,7 +15,7 @@ export default function AddSongPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState('');
 
-  // Form State (Removed songNumber)
+  // Form State
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState('Malayalam');
   const [story, setStory] = useState('');
@@ -77,41 +76,51 @@ export default function AddSongPage() {
 
         if (useOCR) {
           setSubmissionStatus('AI is extracting text and generating translations... (Takes 5-10 seconds)');
-          const apiRes = await fetch('/api/process-song', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ inputMethod: 'image', payload: imageUrl, language })
-          });
-          
-          if (!apiRes.ok) {
-            const errText = await apiRes.text();
-            throw new Error(`AI API Failed (${apiRes.status}): ${errText}`);
+          // INNER TRY-CATCH: If AI fails, we don't break the whole save process!
+          try {
+            const apiRes = await fetch('/api/process-song', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ inputMethod: 'image', payload: imageUrl, language })
+            });
+            
+            if (!apiRes.ok) {
+              console.warn("AI extraction skipped or failed. Saving image only.");
+            } else {
+              const aiData = await apiRes.json();
+              extractedLyrics = aiData.lyrics || '';
+              finalTransliteration = aiData.transliterationEnglish || '';
+              finalMeaningEng = aiData.meaningEnglish || '';
+              finalMeaningMal = aiData.meaningMalayalam || '';
+            }
+          } catch (aiError) {
+            console.warn("AI Network Error. Saving image only.", aiError);
           }
-          const aiData = await apiRes.json();
-          extractedLyrics = aiData.lyrics || '';
-          finalTransliteration = aiData.transliterationEnglish || '';
-          finalMeaningEng = aiData.meaningEnglish || '';
-          finalMeaningMal = aiData.meaningMalayalam || '';
         }
       } 
       // 3. HANDLE TEXT UPLOAD (Only run AI if it's not English)
       else if (inputMethod === 'text' && language !== 'English') {
         setSubmissionStatus('AI is generating transliteration and meaning... (Takes 5-10 seconds)');
-        const apiRes = await fetch('/api/process-song', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inputMethod: 'text', payload: lyrics, language })
-        });
-        
-        if (!apiRes.ok) {
-            const errText = await apiRes.text();
-            throw new Error(`AI API Failed (${apiRes.status}): ${errText}`);
+        // INNER TRY-CATCH: If AI fails, we don't break the whole save process!
+        try {
+          const apiRes = await fetch('/api/process-song', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inputMethod: 'text', payload: lyrics, language })
+          });
+          
+          if (!apiRes.ok) {
+             console.warn("AI generation skipped or failed. Saving original text only.");
+          } else {
+            const aiData = await apiRes.json();
+            extractedLyrics = aiData.lyrics || lyrics;
+            finalTransliteration = aiData.transliterationEnglish || '';
+            finalMeaningEng = aiData.meaningEnglish || '';
+            finalMeaningMal = aiData.meaningMalayalam || '';
+          }
+        } catch (aiError) {
+           console.warn("AI Network Error. Saving original text only.", aiError);
         }
-        const aiData = await apiRes.json();
-        extractedLyrics = aiData.lyrics || lyrics;
-        finalTransliteration = aiData.transliterationEnglish || '';
-        finalMeaningEng = aiData.meaningEnglish || '';
-        finalMeaningMal = aiData.meaningMalayalam || '';
       }
 
       setSubmissionStatus('Saving to Songbook...');
@@ -139,8 +148,7 @@ export default function AddSongPage() {
 
     } catch (error: any) {
       console.error("Detailed Error:", error);
-      // We upgraded the alert so it tells you exactly what broke!
-      alert(`Error: ${error.message || "Something went wrong."}`);
+      alert(`Error: ${error.message || "Something went wrong saving to the database."}`);
       setIsSubmitting(false);
     }
   };

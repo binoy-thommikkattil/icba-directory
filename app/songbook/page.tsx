@@ -22,11 +22,14 @@ export default function SongbookHub() {
     if (!authLoading && !user) router.push('/login');
   }, [user, authLoading, router]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'songs'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // THE VERCEL FIX 1: Added "as any" to tell TypeScript to accept the dynamic Firebase data
       const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // THE VERCEL FIX 2: Explicitly typed 'a' and 'b' as "any" so it doesn't look for songNumber on a strict object
       fetchedSongs.sort((a: any, b: any) => (Number(a.songNumber) || 0) - (Number(b.songNumber) || 0));
       
       setSongs(fetchedSongs);
