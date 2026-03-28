@@ -22,13 +22,13 @@ export default function SongbookHub() {
     if (!authLoading && !user) router.push('/login');
   }, [user, authLoading, router]);
 
-  useEffect(() => {
+useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'songs'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort numerically by song number by default
-      fetchedSongs.sort((a, b) => (Number(a.songNumber) || 0) - (Number(b.songNumber) || 0));
+      const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      fetchedSongs.sort((a: any, b: any) => (Number(a.songNumber) || 0) - (Number(b.songNumber) || 0));
+      
       setSongs(fetchedSongs);
       setIsLoading(false);
     });
