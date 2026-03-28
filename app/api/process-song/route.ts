@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
       parts.push({ inline_data: { mime_type: mimeType, data: base64Image } });
       parts.push({ text: `Extract the lyrics from this image. The original language is ${language}. Then provide the transliteration and meanings.` });
-    } 
+    }
     // 2. IF IT IS TEXT
     else {
       parts.push({ text: `Here are the lyrics of a song in ${language}:\n\n${payload}\n\nClean up the formatting, then provide the transliteration and meanings.` });
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     parts.push({ text: systemPrompt });
 
     // 3. CALL THE GEMINI API
-    const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       const errorMessage = data.error?.message || "Unknown AI API Error";
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-    
+
     // If we made it here, the AI succeeded! Parse the JSON.
     const aiText = data.candidates[0].content.parts[0].text;
     const parsedResult = JSON.parse(aiText);
