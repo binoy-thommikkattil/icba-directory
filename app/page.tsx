@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History, BookOpen } from 'lucide-react';
+import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History, BookOpen, Music } from 'lucide-react';
 // ADDED: where and onSnapshot for our access scanner
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -54,7 +54,7 @@ export default function Dashboard() {
 
           if (isMatch && member.tags) {
             const tags = member.tags.map((t: string) => t.toLowerCase());
-            
+
             if (tags.some((t: string) => t.includes('youth') || t.includes('young family'))) inYouth = true;
             if (tags.some((t: string) => t.includes('bachelor') || t.includes('spinster') || t.includes('unmarried'))) inBachelors = true;
             if (tags.some((t: string) => t.includes('sunday school'))) inSundaySchool = true;
@@ -156,7 +156,7 @@ export default function Dashboard() {
             <p className="text-sm text-slate-500">Statement of Faith</p>
           </div>
         </Link>
-        
+
         <Link href="/directory" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
           <div><h2 className="font-bold text-slate-800 text-lg">Directory</h2><p className="text-sm text-slate-500">Search families and members</p></div>
@@ -174,6 +174,15 @@ export default function Dashboard() {
           <div>
             <h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2>
             <p className="text-sm text-slate-500">Current needs of the assembly</p>
+          </div>
+        </Link>
+        <Link href="/songbook" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-sky-400 transition flex items-center gap-4 group">
+          <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition">
+            <Music size={24} />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 text-lg">Songbook</h2>
+            <p className="text-sm text-slate-500">Lyrics, translations, and chords</p>
           </div>
         </Link>
 
