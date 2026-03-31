@@ -31,8 +31,7 @@ export default function Footer() {
           <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Legal & Information</h4>
           <ul className="space-y-2 text-sm">
             <li><Link href="/privacy" className="hover:text-sky-400 transition">Privacy Policy</Link></li>
-            <li><Link href="/terms" className="hover:text-sky-400 transition">Terms & Conditions</Link></li>
-            <li className="pt-4 text-slate-400">Bengaluru, Karnataka</li>
+            <li><Link href="/terms" className="hover:text-sky-400 transition">Terms & Conditions</Link></li>           
           </ul>
         </div>
       </div>

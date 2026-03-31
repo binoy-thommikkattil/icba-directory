@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
 import TopBar from "@/components/TopBar";
-import InstallPrompt from "@/components/InstallPrompt"; // <-- 1. Import it here
+import InstallPrompt from "@/components/InstallPrompt";
 
-// 1. ADDED: Viewport settings to lock the scale for mobile app feel
+// Viewport settings locked for mobile app feel
 export const viewport: Viewport = {
   themeColor: "#0d9488",
   width: "device-width",
@@ -12,38 +12,38 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-// 2. ADDED: Manifest and Apple Web App settings to your existing metadata
+// Updated Metadata to reflect the whole assembly
 export const metadata: Metadata = {
-  title: "ICBA Directory",
-  description: "Virtual Church Directory",
+  title: "ICBA",
+  description: "Immanuel Christian Believers Assembly",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Directory",
+    title: "ICBA",
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased text-slate-900 pb-20">
+      <body className="font-sans antialiased text-slate-900 bg-white">
         <AuthProvider>
-          {/* KEPT YOUR EXACT STYLING: This keeps the desktop view looking like a phone screen! */}
-          <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative border-x border-slate-100 flex flex-col">
-
-            {/* 2. Drop it globally into the layout */}
+          {/* FIXED: Removed 'max-w-md' and mobile borders so public pages can span the full screen! */}
+          <div className="min-h-screen flex flex-col w-full relative">
+            
             <InstallPrompt />
-
+            
             <TopBar />
 
-            <main className="flex-1">
+            <main className="flex-1 w-full">
               {children}
             </main>
+            
           </div>
         </AuthProvider>
 
-        {/* 3. ADDED: The background Service Worker to trigger the Install prompt */}
+        {/* The background Service Worker to trigger the Install prompt */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

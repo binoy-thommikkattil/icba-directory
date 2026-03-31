@@ -1,27 +1,14 @@
 import Link from 'next/link';
-import { MapPin, Clock, BookOpen, Users, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, BookOpen, ChevronRight } from 'lucide-react';
 import Footer from '@/components/Footer';
+import PublicNavbar from '@/components/PublicNavbar';
 
 export default function PublicHomePage() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      
-      {/* TEMPORARY SIMPLE NAVBAR (We will build a full interactive one next) */}
-      <nav className="bg-white border-b border-slate-100 py-4 px-6 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <Link href="/" className="font-serif font-bold text-xl text-slate-900 tracking-tight">
-            Immanuel <span className="text-sky-600">CBA</span>
-          </Link>
-          <div className="space-x-6 text-sm font-medium text-slate-600 hidden md:block">
-            <Link href="/visit" className="hover:text-sky-600 transition">Visit Us</Link>
-            <Link href="/beliefs" className="hover:text-sky-600 transition">Our Beliefs</Link>
-            <Link href="/dashboard" className="text-sky-600 hover:text-sky-700">Member Login</Link>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-white flex flex-col w-full">
+      <PublicNavbar />
 
-      {/* HERO SECTION */}
-      <main className="flex-grow">
+      <main className="flex-grow w-full">
         <section className="relative bg-slate-50 py-24 px-6 overflow-hidden">
           <div className="absolute inset-0 bg-sky-900/5 mix-blend-multiply" />
           <div className="max-w-4xl mx-auto text-center relative z-10">
