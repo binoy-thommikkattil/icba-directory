@@ -170,7 +170,7 @@ export default function AddFamily() {
 
   return (
     <div className="p-6 bg-white min-h-screen relative z-10">
-      <Link href={isAdmin ? "/" : "/login"} className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
+      <Link href={isAdmin ? "/dashboard" : "/login"} className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> {isAdmin ? "Back to Dashboard" : "Back to Login"}
       </Link>
 
