@@ -65,16 +65,17 @@ export default function PrivateStatementOfFaithPage() {
                       {item.text}
                     </div>
                     
-                    {/* The Bible Verses (Styled as a distinct footer) */}
-                    <div className="flex items-start bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    {/* RESTORED: Beautiful Teal Bible Verses Box */}
+                    <div className="flex items-start bg-teal-50 p-4 rounded-xl border border-teal-100">
                       <BookOpen size={18} className="text-teal-600 mr-3 shrink-0 mt-0.5" />
                       <div>
-                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Scriptural Foundation</span>
-                        <p className="text-sm font-medium text-slate-700 italic">
+                        <span className="block text-xs font-bold text-teal-700 uppercase tracking-wider mb-1">Scriptural Foundation</span>
+                        <p className="text-sm font-medium text-teal-900 italic">
                           {item.verses}
                         </p>
                       </div>
                     </div>
+
                   </div>
                 </div>
               </div>
