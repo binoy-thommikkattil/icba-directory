@@ -139,7 +139,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 pb-24">
+    <div className="w-full max-w-xl mx-auto min-h-screen bg-slate-50 p-6 pb-24 md:border-x border-slate-200">
       <header className="mb-8">
         <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">Dashboard</h1>
       </header>
