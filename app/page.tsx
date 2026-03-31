@@ -1,256 +1,83 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/AuthContext';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History, BookOpen, Music } from 'lucide-react';
-// ADDED: where and onSnapshot for our access scanner
-import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { MapPin, Clock, BookOpen, Users, ChevronRight } from 'lucide-react';
+import Footer from '@/components/Footer';
 
-export default function Dashboard() {
-  // ADDED: userProfile so we can match their name
-  const { user, role, userProfile, loading } = useAuth();
-  const router = useRouter();
-
-  // NEW STATE: Visibility toggles for the three private buttons
-  const [showYouth, setShowYouth] = useState(false);
-  const [showBachelors, setShowBachelors] = useState(false);
-  const [showSundaySchool, setShowSundaySchool] = useState(false);
-
-  useEffect(() => {
-    if (!loading) {
-      if (!user) router.push('/login');
-      else if (role === 'pending') router.push('/waiting-room');
-    }
-  }, [user, role, loading, router]);
-
-  // NEW EFFECT: The Access Scanner
-  useEffect(() => {
-    // If they are an admin, show everything immediately and skip the database check
-    if (role === 'admin') {
-      setShowYouth(true);
-      setShowBachelors(true);
-      setShowSundaySchool(true);
-      return;
-    }
-
-    // If they aren't loaded yet, do nothing
-    if (!userProfile) return;
-
-    const q = query(collection(db, 'members'), where('isPendingCreation', '==', false), where('status', '==', 'Active'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      let inYouth = false;
-      let inBachelors = false;
-      let inSundaySchool = false;
-
-      snapshot.docs.forEach(doc => {
-        const family = doc.data();
-        const isMyFamily = family.submittedBy === userProfile?.name || family.authorEmail === user?.email;
-
-        family.members?.forEach((member: any) => {
-          // Check if this specific member in the loop matches our logged-in user OR if they own the family
-          const isMatch = member.name?.toLowerCase() === userProfile?.name?.toLowerCase() || isMyFamily;
-
-          if (isMatch && member.tags) {
-            const tags = member.tags.map((t: string) => t.toLowerCase());
-
-            if (tags.some((t: string) => t.includes('youth') || t.includes('young family'))) inYouth = true;
-            if (tags.some((t: string) => t.includes('bachelor') || t.includes('spinster') || t.includes('unmarried'))) inBachelors = true;
-            if (tags.some((t: string) => t.includes('sunday school'))) inSundaySchool = true;
-          }
-        });
-      });
-
-      setShowYouth(inYouth);
-      setShowBachelors(inBachelors);
-      setShowSundaySchool(inSundaySchool);
-    });
-
-    return () => unsubscribe();
-  }, [role, userProfile, user]);
-
-  if (loading || !user) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-teal-600" size={32} /></div>;
-
-  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!confirm(`Are you sure you want to bulk import from ${file.name}?`)) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      const rows = text.split('\n').slice(1).filter(row => row.trim() !== '');
-
-      const familiesMap = new Map();
-
-      for (const row of rows) {
-        const [
-          familyName = '', primaryMobile = '', currentAddress = '', nativeAddress = '',
-          homeAssembly = '', commendedAssembly = '', notes = '',
-          memberName = '', bloodGroup = '', willingToDonate = '', tags = ''
-        ] = row.split(',').map(s => s?.trim() || '');
-
-        if (!primaryMobile) continue;
-
-        if (!familiesMap.has(primaryMobile)) {
-          familiesMap.set(primaryMobile, {
-            familyName: familyName || '',
-            primaryMobile: primaryMobile || '',
-            currentAddress: currentAddress || '',
-            nativeAddress: nativeAddress || '',
-            homeAssembly: homeAssembly || '',
-            commendedAssembly: commendedAssembly || '',
-            notes: notes || '',
-            status: 'Active',
-            members: [],
-            submittedBy: "Bulk Admin Upload",
-            lastEdited: new Date().toISOString(),
-            isPendingCreation: false,
-            hasPendingEdit: false
-          });
-        }
-
-        if (memberName) {
-          familiesMap.get(primaryMobile).members.push({
-            name: memberName || '',
-            bloodGroup: bloodGroup || '',
-            willingToDonate: willingToDonate.toLowerCase() === 'yes' || willingToDonate.toLowerCase() === 'true',
-            tags: tags ? tags.split('-').map(t => t.trim()) : []
-          });
-        }
-      }
-
-      let successCount = 0;
-      for (const [_, familyData] of familiesMap) {
-        try {
-          await addDoc(collection(db, 'members'), familyData);
-          successCount++;
-        } catch (err) {
-          console.error(`Failed to upload family: ${familyData.familyName}`, err);
-        }
-      }
-
-      event.target.value = '';
-      alert(`Success! Grouped and uploaded ${successCount} distinct families.`);
-    };
-    reader.readAsText(file);
-  };
-
+export default function PublicHomePage() {
   return (
-    <div className="min-h-screen bg-slate-50 p-6 pb-24">
-      <header className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-slate-900 mb-1">Dashboard</h1>
-      </header>
-
-      {/* CORE MEMBER FEATURES */}
-      <div className="grid grid-cols-1 gap-4 mb-6">
-        {/* NEW STATEMENT OF FAITH BUTTON */}
-        <Link href="/beliefs" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
-            <BookOpen size={24} />
-          </div>
-          <div>
-            <h2 className="font-bold text-slate-800 text-lg">Our Beliefs</h2>
-            <p className="text-sm text-slate-500">Statement of Faith</p>
-          </div>
-        </Link>
-
-        <Link href="/directory" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Directory</h2><p className="text-sm text-slate-500">Search families and members</p></div>
-        </Link>
-
-        <Link href="/meetings" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition"><Calendar size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Meetings</h2><p className="text-sm text-slate-500">Service schedule and links</p></div>
-        </Link>
-
-        <Link href="/prayer" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center group-hover:bg-rose-600 transition">
-            <span className="text-2xl" role="img" aria-label="praying hands">🙏</span>
-          </div>
-          <div>
-            <h2 className="font-bold text-slate-800 text-lg">Prayer Points</h2>
-            <p className="text-sm text-slate-500">Current needs of the assembly</p>
-          </div>
-        </Link>
-        <Link href="/songbook" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-sky-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition">
-            <Music size={24} />
-          </div>
-          <div>
-            <h2 className="font-bold text-slate-800 text-lg">Songbook</h2>
-            <p className="text-sm text-slate-500">Lyrics, translations, and chords</p>
-          </div>
-        </Link>
-
-        {/* CONDITIONALLY RENDERED BUTTONS */}
-        {showYouth && (
-          <Link href="/youth" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-400 transition flex items-center gap-4 group animate-in fade-in">
-            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-            <div><h2 className="font-bold text-slate-800 text-lg">Youth Group</h2><p className="text-sm text-slate-500">Youth & young families</p></div>
+    <div className="min-h-screen bg-white flex flex-col">
+      
+      {/* TEMPORARY SIMPLE NAVBAR (We will build a full interactive one next) */}
+      <nav className="bg-white border-b border-slate-100 py-4 px-6 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <Link href="/" className="font-serif font-bold text-xl text-slate-900 tracking-tight">
+            Immanuel <span className="text-sky-600">CBA</span>
           </Link>
-        )}
-
-        {showBachelors && (
-          <Link href="/bachelors" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 transition flex items-center gap-4 group animate-in fade-in">
-            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-            <div><h2 className="font-bold text-slate-800 text-lg">Bachelor Meeting Members</h2><p className="text-sm text-slate-500">Bachelor Meeting Members</p></div>
-          </Link>
-        )}
-
-        {showSundaySchool && (
-          <Link href="/sunday-school" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-400 transition flex items-center gap-4 group animate-in fade-in">
-            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition"><UsersIcon size={24} /></div>
-            <div><h2 className="font-bold text-slate-800 text-lg">Sunday School</h2><p className="text-sm text-slate-500">Students & Teachers</p></div>
-          </Link>
-        )}
-
-        <Link href="/blood-registry" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 transition flex items-center gap-4 group">
-          <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition"><Droplet size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Blood Registry</h2><p className="text-sm text-slate-500">Find willing donors in emergencies</p></div>
-        </Link>
-      </div>
-
-      {role === 'approved' && (
-        <div className="bg-teal-50 p-5 rounded-2xl border border-teal-100 flex items-center justify-between gap-4 shadow-sm">
-          <div><h3 className="text-sm font-bold text-teal-900">Missing your details?</h3><p className="text-xs text-teal-700 mt-0.5">Add your profile to the directory.</p></div>
-          <Link href="/add-family" className="px-4 py-2.5 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition shrink-0 shadow-sm">Add Family</Link>
-        </div>
-      )}
-
-      {/* ADMIN CONTROLS WITH ALL 4 BUTTONS */}
-      {role === 'admin' && (
-        <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">Admin Controls</h3>
-          <div className="grid grid-cols-1 gap-4">
-            <Link href="/approvals" className="bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-700 hover:bg-slate-900 transition flex items-center gap-4 group">
-              <div className="w-12 h-12 bg-slate-700 text-amber-400 rounded-xl flex items-center justify-center group-hover:scale-110 transition"><ShieldCheck size={24} /></div>
-              <div><h2 className="font-bold text-white text-lg">Pending Approvals</h2><p className="text-sm text-slate-400">Review users, new families & edits</p></div>
-            </Link>
-            <label className="bg-slate-800 text-white p-4 rounded-2xl shadow-md font-bold hover:bg-slate-900 transition flex items-center justify-center w-full mb-4 cursor-pointer">
-              <input type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
-              📊 Bulk Upload Members (CSV)
-            </label>
-            <Link href="/manage-users" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
-              <div className="w-12 h-12 bg-slate-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-50 transition"><UsersIcon size={24} /></div>
-              <div><h2 className="font-bold text-slate-800 text-lg">Manage Users</h2><p className="text-sm text-slate-500">View accounts and revoke access</p></div>
-            </Link>
-
-            <Link href="/add-family" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 group">
-              <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center group-hover:bg-teal-50 group-hover:text-teal-600 transition"><PlusCircle size={24} /></div>
-              <div><h2 className="font-bold text-slate-800 text-lg">Add New Family</h2><p className="text-sm text-slate-500">Directly bypass approval to add a family</p></div>
-            </Link>
-
-            <Link href="/activity-log" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 transition flex items-center gap-4 group">
-              <div className="w-12 h-12 bg-slate-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-50 transition"><History size={24} /></div>
-              <div><h2 className="font-bold text-slate-800 text-lg">Activity Log</h2><p className="text-sm text-slate-500">System audit trail</p></div>
-            </Link>
+          <div className="space-x-6 text-sm font-medium text-slate-600 hidden md:block">
+            <Link href="/visit" className="hover:text-sky-600 transition">Visit Us</Link>
+            <Link href="/beliefs" className="hover:text-sky-600 transition">Our Beliefs</Link>
+            <Link href="/dashboard" className="text-sky-600 hover:text-sky-700">Member Login</Link>
           </div>
         </div>
-      )}
+      </nav>
+
+      {/* HERO SECTION */}
+      <main className="flex-grow">
+        <section className="relative bg-slate-50 py-24 px-6 overflow-hidden">
+          <div className="absolute inset-0 bg-sky-900/5 mix-blend-multiply" />
+          <div className="max-w-4xl mx-auto text-center relative z-10">
+            <h1 className="text-4xl md:text-6xl font-serif font-bold text-slate-900 leading-tight mb-6">
+              Welcome to <br className="hidden md:block" /> Immanuel Christian Believers Assembly
+            </h1>
+            <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+              We are a New Testament assembly gathered to the name of the Lord Jesus Christ. Join us as we worship, break bread, and grow in the grace and knowledge of our Savior.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/visit" className="bg-sky-600 text-white px-8 py-3.5 rounded-full font-bold shadow-sm hover:bg-sky-700 transition flex items-center justify-center">
+                Plan a Visit <ChevronRight size={18} className="ml-1" />
+              </Link>
+              <Link href="/beliefs" className="bg-white text-slate-700 border border-slate-200 px-8 py-3.5 rounded-full font-bold shadow-sm hover:bg-slate-50 transition flex items-center justify-center">
+                What We Believe
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* QUICK INFO CARDS */}
+        <section className="py-16 px-6 bg-white -mt-8 relative z-20">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div className="bg-white p-8 rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center mb-6">
+                <Clock size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Sunday Worship</h3>
+              <p className="text-slate-600 mb-4">Join us every Sunday morning for the breaking of bread and worship.</p>
+              <span className="text-sky-600 font-bold text-sm mt-auto">9:30 AM - 12:30 PM</span>
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center mb-6">
+                <MapPin size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Our Location</h3>
+              <p className="text-slate-600 mb-4">We are conveniently located in Bengaluru. Get directions to our gathering place.</p>
+              <Link href="/visit" className="text-sky-600 font-bold text-sm mt-auto hover:underline">View Map & Directions</Link>
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center mb-6">
+                <BookOpen size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Biblical Teaching</h3>
+              <p className="text-slate-600 mb-4">Explore our library of sermons and articles grounded in New Testament principles.</p>
+              <Link href="/resources/sermons" className="text-sky-600 font-bold text-sm mt-auto hover:underline">Browse Resources</Link>
+            </div>
+
+          </div>
+        </section>
+      </main>
+
+      <Footer />
     </div>
   );
 }
