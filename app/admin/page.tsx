@@ -17,7 +17,7 @@ export default function AdminDashboard() {
     if (!loading) {
       // If they aren't logged in, or their email doesn't include 'admin', kick them out
       if (!user || !user.email?.toLowerCase().includes('admin')) {
-        router.push('/');
+        router.push('/dashboard');
       }
     }
   }, [user, loading, router]);

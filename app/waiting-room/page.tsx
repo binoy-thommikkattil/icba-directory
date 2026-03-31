@@ -14,7 +14,7 @@ export default function WaitingRoom() {
     if (!loading) {
       if (!user) router.push('/login');
       // If they are already approved or an admin, send them straight to the directory!
-      if (role === 'admin' || role === 'approved') router.push('/');
+      if (role === 'admin' || role === 'approved') router.push('/dashboard');
     }
   }, [user, role, loading, router]);
 

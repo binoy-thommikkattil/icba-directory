@@ -97,7 +97,7 @@ export default function SundaySchoolPage() {
                   This directory is private. You must be an admin or a member of this group to view its contents and notices.
               </p>
               <button 
-                  onClick={() => router.push('/')} 
+                  onClick={() => router.push('/dashboard')} 
                   className="px-6 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition shadow-sm"
               >
                   Return to Dashboard

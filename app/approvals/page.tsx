@@ -122,7 +122,7 @@ export default function ApprovalsPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) router.push('/login');
-      if (role !== 'admin') router.push('/');
+      if (role !== 'admin') router.push('/dashboard');
     }
   }, [user, role, authLoading, router]);
 

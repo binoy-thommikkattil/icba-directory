@@ -15,7 +15,7 @@ export default function ManageUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && role !== 'admin') router.push('/');
+    if (!authLoading && role !== 'admin') router.push('/dashboard');
   }, [role, authLoading, router]);
 
   useEffect(() => {
