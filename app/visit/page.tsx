@@ -21,9 +21,6 @@ export default function VisitPage() {
         {/* HEADER SECTION */}
         <section className="bg-slate-50 py-16 px-6 border-b border-slate-100">
           <div className="max-w-4xl mx-auto text-center">
-            <Link href="/" className="inline-flex items-center text-sm font-bold text-sky-600 hover:text-sky-700 mb-6 transition">
-              <ChevronLeft size={16} className="mr-1" /> Back to Home
-            </Link>
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-slate-900 mb-4">Plan Your Visit</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               We would love to have you join us for worship and fellowship. Below you will find our weekly schedule, what to expect on a Sunday, and how to find us.

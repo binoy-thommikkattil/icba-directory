@@ -147,7 +147,7 @@ export default function Dashboard() {
       {/* CORE MEMBER FEATURES */}
       <div className="grid grid-cols-1 gap-4 mb-6">
         {/* NEW STATEMENT OF FAITH BUTTON */}
-        <Link href="/beliefs" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-400 transition flex items-center gap-4 group">
+        <Link href="/dashboard/beliefs" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
             <BookOpen size={24} />
           </div>

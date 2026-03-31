@@ -19,7 +19,7 @@ export default function PublicHomePage() {
             
             <div className="text-lg md:text-xl text-slate-700 mb-10 max-w-3xl mx-auto leading-relaxed space-y-6">
               <p>
-                We are a congregation of Bible-based believers, gathering locally and independently under the supreme headship and authority of the Lord Jesus Christ.
+                We are a congregation of Bible-based believers, gathering locally as an independent New Testament assembly, under the supreme headship and authority of the Lord Jesus Christ.
               </p>
               <p>
                 We unite in our Savior's precious name for corporate worship, earnest prayer, rich fellowship, and the deep study of God's Word.
