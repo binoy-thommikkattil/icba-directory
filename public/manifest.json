@@ -2,7 +2,7 @@
   "name": "ICBA Directory",
   "short_name": "Directory",
   "description": "Church Member Directory",
-  "start_url": "/",
+  "start_url": "dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0d9488",

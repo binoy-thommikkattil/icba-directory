@@ -20,7 +20,7 @@ export default function Login() {
   useEffect(() => {
     if (user && !authLoading) {
       if (role === 'pending') router.push('/waiting-room');
-      else router.push('/');
+      else router.push('/dashboard');
     }
   }, [user, role, authLoading, router]);
 

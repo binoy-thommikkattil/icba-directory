@@ -9,16 +9,28 @@ export default function PublicHomePage() {
       <PublicNavbar />
 
       <main className="flex-grow w-full">
+        {/* HERO SECTION */}
         <section className="relative bg-slate-50 py-24 px-6 overflow-hidden">
           <div className="absolute inset-0 bg-sky-900/5 mix-blend-multiply" />
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <h1 className="text-4xl md:text-6xl font-serif font-bold text-slate-900 leading-tight mb-6">
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-slate-900 leading-tight mb-8">
               Welcome to <br className="hidden md:block" /> Immanuel Christian Believers Assembly
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-              We are a New Testament assembly gathered to the name of the Lord Jesus Christ. Join us as we worship, break bread, and grow in the grace and knowledge of our Savior.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            
+            <div className="text-lg md:text-xl text-slate-700 mb-10 max-w-3xl mx-auto leading-relaxed space-y-6">
+              <p>
+                We are a congregation of Bible-based believers, gathering locally and independently under the supreme headship and authority of the Lord Jesus Christ.
+              </p>
+              <p>
+                We unite in our Savior's precious name for corporate worship, earnest prayer, rich fellowship, and the deep study of God's Word.
+              </p>
+              <blockquote className="italic font-serif text-sky-800 text-xl md:text-2xl pt-4">
+                "For God so loved the world, that he gave his only begotten Son, that whoever believes in him should not perish but have everlasting life."<br/>
+                <span className="text-sm md:text-base font-sans font-bold text-sky-600 not-italic mt-2 block">— John 3:16</span>
+              </blockquote>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
               <Link href="/visit" className="bg-sky-600 text-white px-8 py-3.5 rounded-full font-bold shadow-sm hover:bg-sky-700 transition flex items-center justify-center">
                 Plan a Visit <ChevronRight size={18} className="ml-1" />
               </Link>
@@ -39,7 +51,9 @@ export default function PublicHomePage() {
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">Sunday Worship</h3>
               <p className="text-slate-600 mb-4">Join us every Sunday morning for the breaking of bread and worship.</p>
-              <span className="text-sky-600 font-bold text-sm mt-auto">9:30 AM - 12:30 PM</span>
+              <span className="text-sky-700 bg-sky-50 px-4 py-2 rounded-full font-bold text-sm mt-auto border border-sky-100">
+                9:45 AM - 12:30 PM
+              </span>
             </div>
 
             <div className="bg-white p-8 rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center">
@@ -47,7 +61,11 @@ export default function PublicHomePage() {
                 <MapPin size={24} />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">Our Location</h3>
-              <p className="text-slate-600 mb-4">We are conveniently located in Bengaluru. Get directions to our gathering place.</p>
+              <p className="text-slate-600 mb-4 text-sm leading-relaxed">
+                1st Cross Road, #305, 5th Main Rd,<br/>
+                Jagadish Nagar, New Tippasandra,<br/>
+                Bengaluru, Karnataka 560075
+              </p>
               <Link href="/visit" className="text-sky-600 font-bold text-sm mt-auto hover:underline">View Map & Directions</Link>
             </div>
 
