@@ -53,7 +53,7 @@ export default function BloodRegistryPage() {
   if (authLoading || isLoading || !user) return <div className="p-8 text-center text-slate-500">Loading registry...</div>;
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50">
+    <div className="w-full max-w-xl mx-auto p-6 min-h-screen bg-slate-50 md:border-x border-slate-200">
       <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
       </Link>
@@ -72,8 +72,8 @@ export default function BloodRegistryPage() {
             key={group as string}
             onClick={() => setFilterGroup(group as string)}
             className={`px-4 py-2 rounded-full text-sm font-bold border transition ${filterGroup === group
-                ? 'bg-red-500 text-white border-red-600 shadow-sm'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
+              ? 'bg-red-500 text-white border-red-600 shadow-sm'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
               }`}
           >
             {group as string}
