@@ -32,7 +32,7 @@ export default function ActivityLogPage() {
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen pb-24">
-      <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
+      <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
         <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
       </Link>
       

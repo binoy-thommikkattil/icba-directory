@@ -61,7 +61,7 @@ export default function SongbookHub() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 pb-24">
       <div className="max-w-3xl mx-auto">
-        <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
+        <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
           <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
         </Link>
         

@@ -304,7 +304,7 @@ function DirectoryContent() {
     <main className="w-full relative overflow-hidden">
       {selectedFamilyId === null ? (
         <div className="p-6">
-          <Link href="/" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
+          <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
             <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
           </Link>
           
