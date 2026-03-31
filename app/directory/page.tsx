@@ -301,7 +301,7 @@ function DirectoryContent() {
                     'ICBA Directory';
 
   return (
-    <main className="w-full relative overflow-hidden">
+    <main className="w-full max-w-xl mx-auto relative overflow-hidden md:border-x border-slate-100 min-h-screen">
       {selectedFamilyId === null ? (
         <div className="p-6">
           <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
