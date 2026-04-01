@@ -1,51 +1,54 @@
-import Link from 'next/link';
-import { BookOpen, ChevronLeft } from 'lucide-react';
 import PublicNavbar from '@/components/PublicNavbar';
 import Footer from '@/components/Footer';
 import { statementOfFaith, assemblyIntro } from '@/data/beliefsContent';
 
 export default function PublicBeliefsPage() {
   return (
-    <div className="min-h-screen bg-white flex flex-col w-full">
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col w-full text-slate-900">
       <PublicNavbar />
-
+      
       <main className="flex-grow w-full">
-        {/* HERO SECTION */}
-        <section className="bg-slate-50 py-16 px-6 border-b border-slate-100">
-          <div className="max-w-4xl mx-auto text-center">
-            <Link href="/" className="inline-flex items-center text-sm font-bold text-sky-600 hover:text-sky-700 mb-6 transition">
-              <ChevronLeft size={16} className="mr-1" /> Back to Home
-            </Link>
-            <h1 className="text-4xl md:text-5xl font-serif font-bold text-slate-900 mb-6">What We Believe</h1>
-            <p className="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-              {assemblyIntro}
-            </p>
-          </div>
+        {/* Minimalist, Serious Hero Section */}
+        <section className="pt-24 pb-16 px-6 max-w-4xl mx-auto text-center border-b border-slate-200">
+          <h1 className="text-4xl md:text-6xl font-serif font-bold tracking-tight mb-8 text-slate-900">
+            Statement of Faith
+          </h1>
+          <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto font-serif italic">
+            "{assemblyIntro}"
+          </p>
         </section>
 
-        {/* ELEGANT LIST OF BELIEFS */}
-        <section className="py-20 px-6 bg-white">
-          <div className="max-w-4xl mx-auto space-y-12">
+        {/* Editorial Layout for Beliefs */}
+        <section className="py-16 px-6 max-w-5xl mx-auto mb-12">
+          <div className="space-y-16">
             {statementOfFaith.map((belief, index) => (
-              <div key={index} className="bg-white p-8 md:p-10 rounded-3xl shadow-lg shadow-slate-200/40 border border-slate-100 relative overflow-hidden group hover:border-sky-200 transition duration-300">
+              <div 
+                key={index} 
+                className="flex flex-col md:flex-row border-t border-slate-200 pt-10 gap-8 md:gap-16"
+              >
                 
-                {/* Decorative background accent */}
-                <div className="absolute top-0 left-0 w-2 h-full bg-sky-100 group-hover:bg-sky-500 transition-colors duration-300"></div>
-                
-                <div className="flex flex-col md:flex-row items-start gap-6">
-                  <div className="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center shrink-0">
-                    <BookOpen size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-serif font-bold text-slate-900 mb-4">{belief.title}</h2>
-                    <div className="text-slate-700 leading-relaxed text-lg mb-6 whitespace-pre-wrap">
-                      {belief.text}
-                    </div>
-                    <div className="inline-block bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
-                      <span className="text-sm font-bold text-sky-700 tracking-wide">{belief.verses}</span>
-                    </div>
+                {/* Left Column: Title and Scriptural Basis */}
+                <div className="w-full md:w-1/3 shrink-0">
+                  <h2 className="text-3xl font-serif font-bold text-slate-900 mb-4">
+                    {belief.title}
+                  </h2>
+                  <div className="mt-6">
+                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                      Scriptural Basis
+                    </span>
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                      {belief.verses}
+                    </p>
                   </div>
                 </div>
+
+                {/* Right Column: Theological Content */}
+                <div className="w-full md:w-2/3">
+                  <div className="text-lg text-slate-800 leading-loose whitespace-pre-wrap font-serif">
+                    {belief.text}
+                  </div>
+                </div>
+
               </div>
             ))}
           </div>

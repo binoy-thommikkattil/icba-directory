@@ -1,16 +1,20 @@
 import Link from 'next/link';
-import { MapPin, Clock, Calendar, Music, BookOpen, Mic, Info, Coffee, GraduationCap, ChevronLeft } from 'lucide-react';
+import { MapPin, Clock, Calendar, Music, BookOpen, Mic, Info, Coffee, Users, ChevronLeft, Globe } from 'lucide-react';
 import Footer from '@/components/Footer';
 import PublicNavbar from '@/components/PublicNavbar';
 
 export default function VisitPage() {
   const serviceSteps = [
-    { time: '9:45', period: 'AM', title: 'Worship', desc: 'A time of congregational praise and thanksgiving', icon: Music },
-    { time: '10:20', period: 'AM', title: "Lord's Table", desc: 'Remembrance of Christ by partaking of the emblems', icon: BookOpen },
-    { time: '10:50', period: 'AM', title: 'Sermon', desc: "Expository sermon with relevant life applications from God's Word", icon: Mic },
-    { time: '11:20', period: 'AM', title: 'Announcements & Prayer', desc: 'Community updates and a time of prayer', icon: Info },
-    { time: '11:30', period: 'AM', title: 'Fellowship', desc: 'Connect with others over refreshments', icon: Coffee },
-    { time: '12:00', period: 'PM', title: "Equip Sessions | Kids' Ministry", desc: 'Practical sessions for daily living | Kids praise & learn', icon: GraduationCap }
+    { time: '9:00', period: 'AM', title: 'Opening Songs', desc: 'Congregational singing in Malayalam and English', icon: Music },
+    { time: '9:10', period: 'AM', title: 'Welcome', desc: 'Greeting and welcoming the assembly', icon: Users },
+    { time: '9:15', period: 'AM', title: 'Prayer', desc: "Seeking the Lord's presence and guidance", icon: Info },
+    { time: '9:20', period: 'AM', title: 'Devotion', desc: 'A short sharing from the Word to prepare our hearts', icon: BookOpen },
+    { time: '9:40', period: 'AM', title: 'Praise & Worship', desc: 'A dedicated time of adoring our Lord', icon: Mic },
+    { time: '10:00', period: 'AM', title: 'Breaking of Bread', desc: "Remembering the Lord's death until He comes", icon: Coffee },
+    { time: '10:20', period: 'AM', title: 'Announcements & Testimony', desc: "Assembly updates and sharing of God's goodness", icon: Info },
+    { time: '10:30', period: 'AM', title: 'Message', desc: 'Expository preaching from the Holy Scriptures', icon: BookOpen },
+    { time: '11:15', period: 'AM', title: 'Benediction', desc: 'Closing prayer and blessing', icon: Info },
+    { time: '11:30', period: 'AM', title: 'Ministry Gatherings', desc: 'Dedicated sessions for Youth, Bachelors, Sisters, Brothers, and Sunday School', icon: Users }
   ];
 
   return (
@@ -21,6 +25,9 @@ export default function VisitPage() {
         {/* HEADER SECTION */}
         <section className="bg-slate-50 py-16 px-6 border-b border-slate-100">
           <div className="max-w-4xl mx-auto text-center">
+            <Link href="/" className="inline-flex items-center text-sm font-bold text-sky-600 hover:text-sky-700 mb-6 transition">
+              <ChevronLeft size={16} className="mr-1" /> Back to Home
+            </Link>
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-slate-900 mb-4">Plan Your Visit</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               We would love to have you join us for worship and fellowship. Below you will find our weekly schedule, what to expect on a Sunday, and how to find us.
@@ -36,26 +43,49 @@ export default function VisitPage() {
               <h2 className="text-3xl font-serif font-bold text-slate-900">Weekly Schedule</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-sky-50 p-8 rounded-3xl border border-sky-100 text-center">
-                <h3 className="text-xl font-bold text-sky-900 mb-2">Sunday</h3>
-                <p className="text-sky-700 font-medium mb-4">Worship & Ministry</p>
-                <p className="text-slate-600 text-sm">Join us for the breaking of bread, teaching, and fellowship.</p>
-                <div className="mt-6 inline-block bg-white px-4 py-2 rounded-full text-sm font-bold text-sky-700 shadow-sm">9:45 AM - 12:30 PM</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-sky-50 p-6 rounded-3xl border border-sky-100 text-center flex flex-col items-center">
+                <h3 className="text-xl font-bold text-sky-900 mb-1">Sunday</h3>
+                <p className="text-sky-700 font-medium mb-3">Worship & Ministry</p>
+                <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-sky-700 shadow-sm border border-sky-100">
+                  <Clock size={16} className="mr-2" /> 9:00 AM - 11:15 AM
+                </div>
               </div>
               
-              <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 text-center">
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Wednesday</h3>
-                <p className="text-slate-600 font-medium mb-4">Prayer Meeting</p>
-                <p className="text-slate-500 text-sm">A dedicated time for the assembly to gather and pray for various needs.</p>
-                <div className="mt-6 inline-block bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">7:00 PM - 8:30 PM</div>
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center flex flex-col items-center">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">Tuesday</h3>
+                <p className="text-slate-600 font-medium mb-3 flex items-center gap-2">
+                  Prayer <span className="text-[10px] uppercase tracking-wider bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full flex items-center"><Globe size={10} className="mr-1" /> Online</span>
+                </p>
+                <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
+                  <Clock size={16} className="mr-2" /> 7:15 PM - 8:00 PM
+                </div>
               </div>
 
-              <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 text-center">
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Friday</h3>
-                <p className="text-slate-600 font-medium mb-4">Bible Study</p>
-                <p className="text-slate-500 text-sm">Systematic and expository study of the Scriptures to grow in faith.</p>
-                <div className="mt-6 inline-block bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">7:00 PM - 8:30 PM</div>
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center flex flex-col items-center">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">Thursday</h3>
+                <p className="text-slate-600 font-medium mb-3">Prayer Meeting</p>
+                <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
+                  <Clock size={16} className="mr-2" /> 7:15 PM - 8:00 PM
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center flex flex-col items-center">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">Friday</h3>
+                <p className="text-slate-600 font-medium mb-3 flex items-center gap-2">
+                  Sisters Meeting <span className="text-[10px] uppercase tracking-wider bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full flex items-center"><Globe size={10} className="mr-1" /> Online</span>
+                </p>
+                <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
+                  <Clock size={16} className="mr-2" /> 7:15 PM - 8:00 PM
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 text-center flex flex-col items-center">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">Saturday</h3>
+                <p className="text-slate-600 font-medium mb-3">Bible Study</p>
+                <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
+                  <Clock size={16} className="mr-2" /> 6:00 PM - 7:30 PM
+                </div>
               </div>
             </div>
           </div>
@@ -74,20 +104,20 @@ export default function VisitPage() {
               <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 bg-slate-700 -ml-px"></div>
 
               {serviceSteps.map((step, index) => (
-                <div key={index} className={`relative flex items-center mb-12 last:mb-0 ${index % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
+                <div key={index} className={`relative flex items-center mb-10 last:mb-0 ${index % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
                   
                   {/* Circular Time Badge */}
                   <div className="absolute left-8 md:left-1/2 w-16 h-16 bg-white border-4 border-slate-900 rounded-full flex flex-col items-center justify-center -translate-x-1/2 shadow-lg z-10">
-                    <span className="text-slate-900 font-bold text-lg leading-none">{step.time}</span>
-                    <span className="text-slate-500 text-[10px] font-bold mt-0.5">{step.period}</span>
+                    <span className="text-slate-900 font-bold text-sm leading-none">{step.time}</span>
+                    <span className="text-slate-500 text-[10px] font-bold mt-1">{step.period}</span>
                   </div>
 
                   {/* Content Card */}
                   <div className={`w-full pl-24 md:pl-0 md:w-1/2 ${index % 2 === 0 ? 'md:pr-16 text-left md:text-right' : 'md:pl-16 text-left'}`}>
-                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-sky-500/50 transition duration-300 group">
-                      <div className={`flex items-center gap-3 mb-2 ${index % 2 === 0 ? 'md:justify-end' : ''}`}>
-                        <step.icon size={20} className="text-sky-400" />
-                        <h3 className="text-xl font-bold text-white">{step.title}</h3>
+                    <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 hover:border-sky-500/50 transition duration-300 group">
+                      <div className={`flex items-center gap-3 mb-1.5 ${index % 2 === 0 ? 'md:justify-end' : ''}`}>
+                        <step.icon size={18} className="text-sky-400 shrink-0" />
+                        <h3 className="text-lg font-bold text-white">{step.title}</h3>
                       </div>
                       <p className="text-slate-400 text-sm leading-relaxed group-hover:text-slate-300 transition">{step.desc}</p>
                     </div>
