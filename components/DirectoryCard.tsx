@@ -41,7 +41,9 @@ export interface MemberProps {
   familyName?: string;
   members?: Individual[];
   currentAddress?: string;
+  currentCoordinates?: { lat: number, lng: number } | null;
   nativeAddress?: string;
+  nativeCoordinates?: { lat: number, lng: number } | null;
   homeAssembly?: string;
   commendedAssembly?: string;
   primaryMobile?: string;
@@ -56,7 +58,7 @@ export interface MemberProps {
 }
 
 export default function DirectoryCard({
-  id = '', familyName = 'Unknown', members = [], currentAddress = '', nativeAddress = '',
+  id = '', familyName = 'Unknown', members = [], currentAddress = '', nativeAddress = '',currentCoordinates = null, nativeCoordinates = null,
   homeAssembly = '', commendedAssembly = '', primaryMobile = '', photoUrl = '', photoBase64 = '',
   status = 'Active', notes = '', lastEdited = new Date().toISOString(), hasPendingEdit = false,
   onSwipeLeft, onSwipeRight
@@ -351,7 +353,9 @@ export default function DirectoryCard({
               {/* CLICKABLE CURRENT ADDRESS */}
               {currentAddress && (
                 <a
-                  href={`http://maps.google.com/?q=${encodeURIComponent(currentAddress)}`}
+                  href={currentCoordinates 
+                    ? `https://maps.google.com/?q=${currentCoordinates.lat},${currentCoordinates.lng}` 
+                    : `https://maps.google.com/?q=${encodeURIComponent(currentAddress)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-start gap-3 group block"
@@ -367,7 +371,9 @@ export default function DirectoryCard({
               {/* CLICKABLE NATIVE ADDRESS */}
               {nativeAddress && (
                 <a
-                  href={`http://maps.google.com/?q=${encodeURIComponent(nativeAddress)}`}
+                  href={nativeCoordinates 
+                    ? `https://maps.google.com/?q=${nativeCoordinates.lat},${nativeCoordinates.lng}` 
+                    : `https://maps.google.com/?q=${encodeURIComponent(nativeAddress)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-start gap-3 group block"

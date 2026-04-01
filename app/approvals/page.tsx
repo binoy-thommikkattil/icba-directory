@@ -6,9 +6,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { logActivity } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X, ArrowRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X, ArrowRight, MapPin } from 'lucide-react';
 
-// --- NEW: THE DIFF VIEWER COMPONENT ---
+// --- THE DIFF VIEWER COMPONENT ---
 // This intelligently compares the live database record with the proposed draft
 const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
   if (!original || !draft) return null;
@@ -34,7 +34,24 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
       }
     });
 
-    // 2. Check Photo changes
+    // 2. NEW: Check exact GPS Coordinate changes
+    if (JSON.stringify(original.currentCoordinates) !== JSON.stringify(draft.currentCoordinates)) {
+      diffs.push({
+        label: 'Current GPS Coordinates',
+        oldVal: original.currentCoordinates ? `${original.currentCoordinates.lat.toFixed(4)}, ${original.currentCoordinates.lng.toFixed(4)}` : '(No Pin Set)',
+        newVal: draft.currentCoordinates ? `${draft.currentCoordinates.lat.toFixed(4)}, ${draft.currentCoordinates.lng.toFixed(4)}` : '(Pin Removed)'
+      });
+    }
+
+    if (JSON.stringify(original.nativeCoordinates) !== JSON.stringify(draft.nativeCoordinates)) {
+      diffs.push({
+        label: 'Native GPS Coordinates',
+        oldVal: original.nativeCoordinates ? `${original.nativeCoordinates.lat.toFixed(4)}, ${original.nativeCoordinates.lng.toFixed(4)}` : '(No Pin Set)',
+        newVal: draft.nativeCoordinates ? `${draft.nativeCoordinates.lat.toFixed(4)}, ${draft.nativeCoordinates.lng.toFixed(4)}` : '(Pin Removed)'
+      });
+    }
+
+    // 3. Check Photo changes
     if (original.photoUrl !== draft.photoUrl) {
       diffs.push({
         label: 'Family Photo',
@@ -43,7 +60,7 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
       });
     }
 
-    // 3. Check Members Array
+    // 4. Check Members Array
     const oldMembersStr = JSON.stringify(original.members || []);
     const newMembersStr = JSON.stringify(draft.members || []);
     
@@ -276,8 +293,23 @@ export default function ApprovalsPage() {
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Status</span><span className="text-slate-600">{activeData.status || 'Active'}</span></div>
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Mobile</span><span className="text-slate-600">{activeData.primaryMobile || '-'}</span></div>
-                      <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Current Addr</span><span className="text-slate-600">{activeData.currentAddress || '-'}</span></div>
-                      <div className="flex pb-1"><span className="font-bold text-slate-700 w-1/3">Native Addr</span><span className="text-slate-600">{activeData.nativeAddress || '-'}</span></div>
+                      
+                      {/* NEW: Displays Coordinates if available during Creation Review */}
+                      <div className="flex border-b border-slate-100 pb-2">
+                        <span className="font-bold text-slate-700 w-1/3">Current Addr</span>
+                        <span className="text-slate-600">
+                          {activeData.currentAddress || '-'} 
+                          {activeData.currentCoordinates && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
+                        </span>
+                      </div>
+                      <div className="flex pb-1">
+                        <span className="font-bold text-slate-700 w-1/3">Native Addr</span>
+                        <span className="text-slate-600">
+                          {activeData.nativeAddress || '-'}
+                          {activeData.nativeCoordinates && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
+                        </span>
+                      </div>
+
                     </div>
                   </div>
 

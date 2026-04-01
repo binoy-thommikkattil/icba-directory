@@ -8,6 +8,7 @@ import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon, Loader2 } from 'l
 import Link from 'next/link';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '@/lib/AuthContext';
+import LocationPicker from '@/components/LocationPicker'; // <-- IMPORTED NEW COMPONENT
 
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
@@ -62,8 +63,13 @@ function EditFamilyContent() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
+  // ADDRESS & NEW COORDINATE STATES
   const [currentAddress, setCurrentAddress] = useState('');
+  const [currentCoordinates, setCurrentCoordinates] = useState<{ lat: number, lng: number } | null>(null);
+  
   const [nativeAddress, setNativeAddress] = useState('');
+  const [nativeCoordinates, setNativeCoordinates] = useState<{ lat: number, lng: number } | null>(null);
+
   const [homeAssembly, setHomeAssembly] = useState('');
   const [commendedAssembly, setCommendedAssembly] = useState('');
   const [status, setStatus] = useState('Active');
@@ -90,8 +96,13 @@ function EditFamilyContent() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
+          
+          // LOAD ADDRESS & MAP DATA
           setCurrentAddress(data.currentAddress || '');
+          setCurrentCoordinates(data.currentCoordinates || null);
           setNativeAddress(data.nativeAddress || '');
+          setNativeCoordinates(data.nativeCoordinates || null);
+          
           setHomeAssembly(data.homeAssembly || '');
           setCommendedAssembly(data.commendedAssembly || '');
           setStatus(data.status || 'Active');
@@ -171,6 +182,12 @@ function EditFamilyContent() {
       return;
     }
 
+    if (!currentAddress.trim()) {
+      alert("Please provide a Current Address.");
+      setLoading(false);
+      return;
+    }
+
     // --- BULLETPROOF DUAL-SAVE SYSTEM ---
     let finalStorageUrl = photoUrl;
     let finalBase64Backup = existingBase64;
@@ -197,8 +214,13 @@ function EditFamilyContent() {
     const formData = {
       familyName: primaryMember.name,
       primaryMobile: primaryMember.mobile,
+      
+      // NEW MAPPING IN PAYLOAD
       currentAddress,
+      currentCoordinates,
       nativeAddress,
+      nativeCoordinates,
+      
       homeAssembly,
       commendedAssembly,
 
@@ -391,16 +413,30 @@ function EditFamilyContent() {
         </div>
 
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Info</h2>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Current Address *</label>
-            <textarea required rows={3} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={currentAddress} onChange={e => setCurrentAddress(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Native Address</label>
-            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={nativeAddress} onChange={e => setNativeAddress(e.target.value)} />
-          </div>
-          <div className="space-y-4">
+          <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Location</h2>
+          
+          {/* REPLACED: Normal textareas with the new LocationPickers! */}
+          <LocationPicker
+            label="Current Address & Location *"
+            address={currentAddress}
+            coordinates={currentCoordinates}
+            onChange={(data) => {
+              setCurrentAddress(data.address);
+              setCurrentCoordinates(data.coordinates);
+            }}
+          />
+
+          <LocationPicker
+            label="Native Address & Location"
+            address={nativeAddress}
+            coordinates={nativeCoordinates}
+            onChange={(data) => {
+              setNativeAddress(data.address);
+              setNativeCoordinates(data.coordinates);
+            }}
+          />
+
+          <div className="space-y-4 pt-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Home Assembly</label>
               <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={homeAssembly} onChange={e => setHomeAssembly(e.target.value)} />
