@@ -222,12 +222,14 @@ function DirectoryContent() {
           yPos += 10;
         }
 
-        if (family.currentAddress) {
+        // UPDATED: Combined Current Address Logic
+        const fullCurrentAddress = [family.currentAddress, family.currentMapAddress].filter(Boolean).join(', ');
+        if (fullCurrentAddress) {
           pdf.setFont('helvetica', 'bold');
           pdf.text('Current Address:', margin, yPos);
           pdf.setFont('helvetica', 'normal');
           yPos += 7;
-          const addressLines = pdf.splitTextToSize(family.currentAddress, contentWidth - 5);
+          const addressLines = pdf.splitTextToSize(fullCurrentAddress, contentWidth - 5);
           addressLines.forEach((line: string) => {
             if (yPos > pageHeight - 40) { pdf.addPage(); addPageFooter(); yPos = 30; }
             pdf.text(line, margin + 5, yPos);
@@ -236,12 +238,14 @@ function DirectoryContent() {
           yPos += 5;
         }
 
-        if (family.nativeAddress) {
+        // UPDATED: Combined Native Address Logic
+        const fullNativeAddress = [family.nativeAddress, family.nativeMapAddress].filter(Boolean).join(', ');
+        if (fullNativeAddress) {
           pdf.setFont('helvetica', 'bold');
           pdf.text('Native Address:', margin, yPos);
           pdf.setFont('helvetica', 'normal');
           yPos += 7;
-          const nativeLines = pdf.splitTextToSize(family.nativeAddress, contentWidth - 5);
+          const nativeLines = pdf.splitTextToSize(fullNativeAddress, contentWidth - 5);
           nativeLines.forEach((line: string) => {
             if (yPos > pageHeight - 40) { pdf.addPage(); addPageFooter(); yPos = 30; }
             pdf.text(line, margin + 5, yPos);
@@ -294,7 +298,6 @@ function DirectoryContent() {
 
   const selectedFamilyData = families.find(f => f.id === selectedFamilyId);
   
-  // Format the title depending on if a filter is active
   const pageTitle = filterTag === 'youth' ? 'Youth Directory' :
                     filterTag === 'bachelor' ? 'Bachelors Directory' :
                     filterTag === 'sunday-school' ? 'Sunday School Directory' :
@@ -310,7 +313,6 @@ function DirectoryContent() {
           
           <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">{pageTitle}</h1>
 
-          {/* Helper text for tagged pages */}
           {filterTag === 'bachelor' && <p className="text-sm text-slate-500 mb-6">Showing members with tags 'bachelor' or 'unmarried'.</p>}
           {filterTag === 'youth' && <p className="text-sm text-slate-500 mb-6">Showing members with tags 'youth' or 'young family'.</p>}
           {filterTag === 'sunday-school' && <p className="text-sm text-slate-500 mb-6">Showing members with tag 'sunday school'.</p>}
@@ -373,7 +375,7 @@ function DirectoryContent() {
     </main>
   );
 }
-// This is your new default export that safely wraps the directory content
+
 export default function DirectoryPage() {
   return (
     <Suspense fallback={
