@@ -8,7 +8,7 @@ import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon } from 'lucide-rea
 import Link from 'next/link';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '@/lib/AuthContext';
-import LocationPicker from '@/components/LocationPicker'; // <-- IMPORTED NEW COMPONENT
+import LocationPicker from '@/components/LocationPicker';
 
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
@@ -58,12 +58,16 @@ export default function AddFamily() {
   // DETERMINE IF USER IS ADMIN TO BYPASS APPROVAL
   const isAdmin = role === 'admin' || user?.email?.toLowerCase().includes('admin');
 
-  // ADDRESS & NEW COORDINATE STATES
+  // ADDRESS & NEW MAP STATES (Separated Lat & Lng)
   const [currentAddress, setCurrentAddress] = useState('');
-  const [currentCoordinates, setCurrentCoordinates] = useState<{ lat: number, lng: number } | null>(null);
+  const [currentMapAddress, setCurrentMapAddress] = useState(''); 
+  const [currentLat, setCurrentLat] = useState<number | null>(null);
+  const [currentLng, setCurrentLng] = useState<number | null>(null);
   
   const [nativeAddress, setNativeAddress] = useState('');
-  const [nativeCoordinates, setNativeCoordinates] = useState<{ lat: number, lng: number } | null>(null);
+  const [nativeMapAddress, setNativeMapAddress] = useState(''); 
+  const [nativeLat, setNativeLat] = useState<number | null>(null);
+  const [nativeLng, setNativeLng] = useState<number | null>(null);
   
   const [homeAssembly, setHomeAssembly] = useState('');
   const [commendedAssembly, setCommendedAssembly] = useState('');
@@ -115,8 +119,8 @@ export default function AddFamily() {
       return;
     }
 
-    if (!currentAddress.trim()) {
-      alert("Please provide a Current Address.");
+    if (!currentAddress.trim() && !currentLat) {
+      alert("Please provide a Current Address or set a Location Pin.");
       setLoading(false);
       return;
     }
@@ -126,10 +130,8 @@ export default function AddFamily() {
     let finalBase64Backup = '';
 
     if (photoUrl && photoUrl.startsWith('data:image')) {
-      // 1. ALWAYS generate the heavily compressed Base64 backup for the database
       finalBase64Backup = photoUrl.length > 300000 ? await autoCompressImage(photoUrl) : photoUrl;
 
-      // 2. Try to upload the original cropped image to Firebase Storage
       try {
         const fileName = `family_photos/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
         const storageRef = ref(storage, fileName);
@@ -137,7 +139,6 @@ export default function AddFamily() {
         finalStorageUrl = await getDownloadURL(storageRef);
       } catch (uploadError) {
         console.warn("Firebase Storage failed. Relying entirely on Base64 backup.", uploadError);
-        // We do NOT stop the submission here. We just let finalStorageUrl remain empty!
       }
     }
 
@@ -145,15 +146,19 @@ export default function AddFamily() {
       familyName: primaryMember.name,
       primaryMobile: primaryMember.mobile,
       
-      // NEW MAPPING IN PAYLOAD
+      // INCLUDED SEPARATED MAP DATA IN PAYLOAD
       currentAddress, 
-      currentCoordinates,
+      currentMapAddress,
+      currentLat,
+      currentLng,
+      
       nativeAddress,
-      nativeCoordinates,
+      nativeMapAddress,
+      nativeLat,
+      nativeLng,
       
       homeAssembly, commendedAssembly,
 
-      // Save BOTH to the database!
       photoUrl: finalStorageUrl,
       photoBase64: finalBase64Backup,
 
@@ -322,24 +327,35 @@ export default function AddFamily() {
         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Location</h2>
           
-          {/* REPLACED: Normal textareas with the new LocationPickers! */}
           <LocationPicker
             label="Current Address & Location *"
+            type="Current"
+            isAdmin={isAdmin}
             address={currentAddress}
-            coordinates={currentCoordinates}
+            mapAddress={currentMapAddress}
+            lat={currentLat}
+            lng={currentLng}
             onChange={(data) => {
               setCurrentAddress(data.address);
-              setCurrentCoordinates(data.coordinates);
+              setCurrentMapAddress(data.mapAddress);
+              setCurrentLat(data.lat);
+              setCurrentLng(data.lng);
             }}
           />
 
           <LocationPicker
             label="Native Address & Location"
+            type="Native"
+            isAdmin={isAdmin}
             address={nativeAddress}
-            coordinates={nativeCoordinates}
+            mapAddress={nativeMapAddress}
+            lat={nativeLat}
+            lng={nativeLng}
             onChange={(data) => {
               setNativeAddress(data.address);
-              setNativeCoordinates(data.coordinates);
+              setNativeMapAddress(data.mapAddress);
+              setNativeLat(data.lat);
+              setNativeLng(data.lng);
             }}
           />
 

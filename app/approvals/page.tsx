@@ -9,19 +9,20 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X, ArrowRight, MapPin } from 'lucide-react';
 
 // --- THE DIFF VIEWER COMPONENT ---
-// This intelligently compares the live database record with the proposed draft
 const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
   if (!original || !draft) return null;
 
   const getDifferences = () => {
     const diffs = [];
     
-    // 1. Check standard text fields
+    // 1. Check standard text fields (ADDED MAP ADDRESSES)
     const fieldsToTrack = [
       { key: 'familyName', label: 'Primary Member (Family Name)' },
       { key: 'primaryMobile', label: 'Primary Mobile' },
       { key: 'currentAddress', label: 'Current Address' },
+      { key: 'currentMapAddress', label: 'Current Map Address' },
       { key: 'nativeAddress', label: 'Native Address' },
+      { key: 'nativeMapAddress', label: 'Native Map Address' },
       { key: 'homeAssembly', label: 'Home Assembly' },
       { key: 'commendedAssembly', label: 'Commended Assembly' },
       { key: 'notes', label: 'Additional Notes' },
@@ -34,20 +35,30 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
       }
     });
 
-    // 2. NEW: Check exact GPS Coordinate changes
-    if (JSON.stringify(original.currentCoordinates) !== JSON.stringify(draft.currentCoordinates)) {
+    // 2. NEW: Check exact GPS Coordinate changes (Supporting both new Lat/Lng and old Coordinates object)
+    const oldCurrentLat = original.currentLat || original.currentCoordinates?.lat;
+    const oldCurrentLng = original.currentLng || original.currentCoordinates?.lng;
+    const newCurrentLat = draft.currentLat || draft.currentCoordinates?.lat;
+    const newCurrentLng = draft.currentLng || draft.currentCoordinates?.lng;
+
+    if (oldCurrentLat !== newCurrentLat || oldCurrentLng !== newCurrentLng) {
       diffs.push({
         label: 'Current GPS Coordinates',
-        oldVal: original.currentCoordinates ? `${original.currentCoordinates.lat.toFixed(4)}, ${original.currentCoordinates.lng.toFixed(4)}` : '(No Pin Set)',
-        newVal: draft.currentCoordinates ? `${draft.currentCoordinates.lat.toFixed(4)}, ${draft.currentCoordinates.lng.toFixed(4)}` : '(Pin Removed)'
+        oldVal: oldCurrentLat ? `${oldCurrentLat.toFixed(4)}, ${oldCurrentLng.toFixed(4)}` : '(No Pin Set)',
+        newVal: newCurrentLat ? `${newCurrentLat.toFixed(4)}, ${newCurrentLng.toFixed(4)}` : '(Pin Removed)'
       });
     }
 
-    if (JSON.stringify(original.nativeCoordinates) !== JSON.stringify(draft.nativeCoordinates)) {
+    const oldNativeLat = original.nativeLat || original.nativeCoordinates?.lat;
+    const oldNativeLng = original.nativeLng || original.nativeCoordinates?.lng;
+    const newNativeLat = draft.nativeLat || draft.nativeCoordinates?.lat;
+    const newNativeLng = draft.nativeLng || draft.nativeCoordinates?.lng;
+
+    if (oldNativeLat !== newNativeLat || oldNativeLng !== newNativeLng) {
       diffs.push({
         label: 'Native GPS Coordinates',
-        oldVal: original.nativeCoordinates ? `${original.nativeCoordinates.lat.toFixed(4)}, ${original.nativeCoordinates.lng.toFixed(4)}` : '(No Pin Set)',
-        newVal: draft.nativeCoordinates ? `${draft.nativeCoordinates.lat.toFixed(4)}, ${draft.nativeCoordinates.lng.toFixed(4)}` : '(Pin Removed)'
+        oldVal: oldNativeLat ? `${oldNativeLat.toFixed(4)}, ${oldNativeLng.toFixed(4)}` : '(No Pin Set)',
+        newVal: newNativeLat ? `${newNativeLat.toFixed(4)}, ${newNativeLng.toFixed(4)}` : '(Pin Removed)'
       });
     }
 
@@ -210,7 +221,6 @@ export default function ApprovalsPage() {
         <p className="text-slate-500 text-sm">Review access requests and directory updates.</p>
       </div>
 
-      {/* 1. USERS */}
       <section className="mb-10">
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center"><ShieldAlert size={20} className="mr-2 text-amber-500" /> Account Access Requests</h2>
         {pendingUsers.length === 0 ? <p className="text-slate-500 text-sm bg-white p-6 rounded-2xl border border-slate-200 text-center">No pending access requests.</p> : (
@@ -228,7 +238,6 @@ export default function ApprovalsPage() {
         )}
       </section>
 
-      {/* 2. CREATIONS */}
       <section className="mb-10">
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center"><UserPlus size={20} className="mr-2 text-blue-500" /> New Family Submissions</h2>
         {pendingCreations.length === 0 ? <p className="text-slate-500 text-sm bg-white p-6 rounded-2xl border border-slate-200 text-center">No new families pending.</p> : (
@@ -248,7 +257,6 @@ export default function ApprovalsPage() {
         )}
       </section>
 
-      {/* 3. EDITS */}
       <section>
         <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center"><Edit3 size={20} className="mr-2 text-purple-500" /> Directory Edit Requests</h2>
         {pendingEdits.length === 0 ? <p className="text-slate-500 text-sm bg-white p-6 rounded-2xl border border-slate-200 text-center">No pending edits.</p> : (
@@ -265,7 +273,6 @@ export default function ApprovalsPage() {
         )}
       </section>
 
-      {/* UNIFIED REVIEW MODAL */}
       {reviewItem && activeData && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
@@ -283,7 +290,6 @@ export default function ApprovalsPage() {
                 <span><span className="text-slate-500">Submitted by:</span> <strong className="text-slate-900">{activeData.submittedBy || 'Unknown Member'}</strong></span>
               </div>
 
-              {/* SMART RENDER: If it's an edit, show the DiffViewer. If it's a new creation, show the standard data block */}
               {reviewItem.type === 'edit' ? (
                 <DiffViewer original={reviewItem.data} draft={activeData} />
               ) : (
@@ -294,19 +300,19 @@ export default function ApprovalsPage() {
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Status</span><span className="text-slate-600">{activeData.status || 'Active'}</span></div>
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Mobile</span><span className="text-slate-600">{activeData.primaryMobile || '-'}</span></div>
                       
-                      {/* NEW: Displays Coordinates if available during Creation Review */}
+                      {/* UPDATED: Combines Manual Address + Map Address and checks for Lat/Lng */}
                       <div className="flex border-b border-slate-100 pb-2">
                         <span className="font-bold text-slate-700 w-1/3">Current Addr</span>
                         <span className="text-slate-600">
-                          {activeData.currentAddress || '-'} 
-                          {activeData.currentCoordinates && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
+                          {[activeData.currentAddress, activeData.currentMapAddress].filter(Boolean).join(', ') || '-'} 
+                          {(activeData.currentLat || activeData.currentCoordinates) && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
                         </span>
                       </div>
                       <div className="flex pb-1">
                         <span className="font-bold text-slate-700 w-1/3">Native Addr</span>
                         <span className="text-slate-600">
-                          {activeData.nativeAddress || '-'}
-                          {activeData.nativeCoordinates && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
+                          {[activeData.nativeAddress, activeData.nativeMapAddress].filter(Boolean).join(', ') || '-'}
+                          {(activeData.nativeLat || activeData.nativeCoordinates) && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
                         </span>
                       </div>
 
