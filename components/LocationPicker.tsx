@@ -114,7 +114,7 @@ export default function LocationPicker({
           className="self-start text-xs flex items-center bg-white px-4 py-2 rounded-lg border border-slate-300 text-teal-700 font-bold hover:bg-teal-50 shadow-sm transition"
         >
           <MapIcon size={14} className="mr-2" />
-          Set {type} Location on Map
+          Set {type} Address on Map
         </button>
       </div>
 
