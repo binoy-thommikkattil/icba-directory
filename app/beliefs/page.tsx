@@ -32,10 +32,14 @@ export default function PublicBeliefsPage() {
                 
                 {/* LEFT COLUMN (Your Red Box): A softly colored panel for the title and verses */}
                 <div className="w-full md:w-2/5 lg:w-1/3 bg-slate-50 p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 shrink-0">
+                  
+                  {/* MODIFIED: Heading Block to give it more attention */}
                   <div>
-                    <h2 className="text-3xl font-serif font-bold text-slate-900 mb-8">
+                    <h2 className="text-3xl md:text-4xl font-serif font-bold text-slate-900 tracking-tight mb-4">
                       {belief.title}
                     </h2>
+                    {/* Subtle accent line to draw the eye */}
+                    <div className="w-12 h-1.5 bg-teal-600 rounded-full mb-8"></div>
                   </div>
                   
                   {/* INNER VERSES BOX (Your Purple Box): A rich, deep blue box to make the verses pop */}
