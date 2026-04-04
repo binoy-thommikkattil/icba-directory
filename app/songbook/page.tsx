@@ -4,7 +4,7 @@ import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { ArrowLeft, Search, Plus, Music, Loader2, User, Mic2 } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Music, Loader2, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function SongbookHub() {
@@ -16,11 +16,8 @@ export default function SongbookHub() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLanguage, setActiveLanguage] = useState('All');
   
-  // NEW: View Mode State
   const [viewMode, setViewMode] = useState<'songs' | 'authors'>('songs');
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
-
-  const languages = ['All', 'Malayalam', 'English', 'Tamil', 'Kannada', 'Hindi', 'Telugu', 'Gujarati'];
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -49,7 +46,17 @@ export default function SongbookHub() {
     return () => unsubscribe();
   }, [user]);
 
-  // NEW: Calculate Unique Authors for the Index
+  // Dynamically generate the language filters based ONLY on songs that exist
+  const availableLanguages = useMemo(() => {
+    const uniqueLangs = new Set<string>();
+    songs.forEach(song => {
+      if (song.language && song.language.trim() !== '' && song.language !== 'Auto-Detect' && song.language !== 'Unknown') {
+        uniqueLangs.add(song.language);
+      }
+    });
+    return ['All', ...Array.from(uniqueLangs).sort()];
+  }, [songs]);
+
   const authorsList = useMemo(() => {
     const authorsMap = new Map<string, number>();
     songs.forEach(song => {
@@ -73,8 +80,11 @@ export default function SongbookHub() {
     return matchesSearch && matchesLanguage && matchesAuthor;
   });
 
+  // FIXED: Reset invisible filters when an author is clicked
   const handleAuthorClick = (authorName: string) => {
     setSelectedAuthor(authorName);
+    setActiveLanguage('All'); // Clear hidden language filter
+    setSearchTerm('');        // Clear hidden text search
     setViewMode('songs');
   };
 
@@ -100,7 +110,6 @@ export default function SongbookHub() {
           </Link>
         </div>
 
-        {/* NEW: View Mode Tabs */}
         <div className="flex bg-slate-200/60 p-1 rounded-xl mb-6">
           <button 
             onClick={() => { setViewMode('songs'); setSelectedAuthor(null); }} 
@@ -116,7 +125,6 @@ export default function SongbookHub() {
           </button>
         </div>
 
-        {/* AUTHORS VIEW */}
         {viewMode === 'authors' ? (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             {authorsList.length > 0 ? (
@@ -139,7 +147,6 @@ export default function SongbookHub() {
             )}
           </div>
         ) : (
-        /* SONGS VIEW */
           <>
             <div className="relative mb-6">
               <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
@@ -165,7 +172,7 @@ export default function SongbookHub() {
 
             {!selectedAuthor && (
               <div className="flex flex-wrap gap-2 mb-6">
-                {languages.map(lang => (
+                {availableLanguages.map(lang => (
                   <button
                     key={lang}
                     onClick={() => setActiveLanguage(lang)}
@@ -194,7 +201,6 @@ export default function SongbookHub() {
                       </div>
                       <div className="flex justify-between items-center w-full">
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md uppercase tracking-wider">{song.language || 'Unknown'}</span>
-                        {/* MODIFIED: Writer aligned to the bottom right */}
                         {song.originalAuthor && (
                           <span className="text-xs font-medium text-slate-400 italic">
                             By {song.originalAuthor}
