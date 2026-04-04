@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { inputMethod, payload, language } = await req.json();
+    const { inputMethod, payload, language, title, originalAuthor } = await req.json();
 
     if (!process.env.GEMINI_API_KEY) {
       console.error("API Key is missing from environment variables.");
@@ -21,26 +21,38 @@ export async function POST(req: Request) {
       const mimeType = imageResp.headers.get('content-type') || 'image/jpeg';
 
       parts.push({ inline_data: { mime_type: mimeType, data: base64Image } });
-      parts.push({ text: `Extract the lyrics from this image. The original language is ${language}.` });
+      parts.push({ text: `Extract the lyrics from this image.` });
     }
     // 2. IF IT IS TEXT
     else {
-      parts.push({ text: `Here are the lyrics of a song in ${language}:\n\n${payload}\n\nClean up the formatting and provide the translations requested.` });
+      parts.push({ text: `Here are the lyrics of a song:\n\n${payload}\n\nClean up the formatting and provide the requested data.` });
     }
 
-    // 3. THE MASTER POETIC COMMAND (Now with Anti-Repetition Rules!)
-    const systemPrompt = `You are a masterful poetic translator and an assistant for a church app. You must respond ONLY with a valid JSON object.
-    The JSON must have exactly these 5 string keys:
+    // Pass the user's manual inputs to the AI so it knows what to skip or fix
+    parts.push({ text: `User provided Title: "${title || 'NONE'}". User provided Author: "${originalAuthor || 'NONE'}". User provided Language: "${language}".` });
+
+    // 3. THE MASTER MUSIC HISTORIAN COMMAND
+    const systemPrompt = `You are a masterful poetic translator, a Christian music historian, and a linguist. You must respond ONLY with a valid JSON object.
     
-    "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks. Keep repetitions as they are meant to be sung.
+    The JSON must have exactly these 9 string keys:
+    
+    "title": The title of the song. If the user provided a title, use it. If the user provided NONE, auto-detect the known title of the hymn. If unknown, use the first 3-5 words of the lyrics as the title.
+    
+    "language": The language of the song. If the user provided "Auto-Detect", identify the exact language (e.g., Malayalam, Hindi, Kannada, Telugu, Gujarati, Tamil, English).
+    
+    "originalAuthor": The composer or writer. If the user provided one, use it. If NONE, try to identify the composer from history. CRITICAL UNIFORMITY RULE: Always use initials for first/middle names (e.g., ALWAYS output "V Nagel" instead of Volbrecht Nagel, "T K Samuel" instead of T.K. Samuel, "Fanny J Crosby", etc.). If entirely unknown, return an empty string "".
+    
+    "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
     
     "transliterationEnglish": The lyrics phonetically spelled out using English letters, matching the lyrics perfectly so a user can sing along. Keep repetitions.
     
-    "meaningEnglish": A deeply poetic translation. CRITICAL RULE: If the original lyrics repeat a line multiple times (e.g., singing the same sentence 3 times), DO NOT redundantly repeat the translation 3 times. Translate the unique thought once with poetic emphasis, grouping the repetition elegantly so it reads like a beautiful poem rather than a broken record.
+    "transliterationMalayalam": The exact pronunciation of the lyrics spelled out using MALAYALAM letters. This is CRITICAL for songs in Hindi, Kannada, Telugu, Tamil, etc., so a Malayalam reader can read and sing the non-Malayalam words. If the original language is already Malayalam, you can leave this blank.
     
-    "meaningMalayalam": A poetic translation into Malayalam leveraging shared linguistic roots with other Indian languages. Apply the same CRITICAL RULE as above: Do not mindlessly repeat translations for repetitive choruses. Make it flow beautifully.
+    "meaningEnglish": A deeply poetic translation. CRITICAL RULE: If the original lyrics repeat a line multiple times, DO NOT redundantly repeat the translation. Group it elegantly.
     
-    "story": "A concise, 3-5 sentence historical background or story behind the writing of this song. CRITICAL ANTI-HALLUCINATION RULE: If you do not have highly confident, verifiable facts, you MUST return an empty string (''). DO NOT guess."`;
+    "meaningMalayalam": A poetic translation into Malayalam leveraging shared linguistic roots. Apply the same anti-repetition rule.
+    
+    "story": A concise, 3-5 sentence historical background or story behind the writing of this song. CRITICAL ANTI-HALLUCINATION RULE: If you do not have highly confident, verifiable facts about this specific song, you MUST return an empty string "". DO NOT guess.`;
     
     parts.push({ text: systemPrompt });
 
@@ -51,7 +63,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: {
-          temperature: 0.4, // Increased slightly to allow for poetic creativity!
+          temperature: 0.2, // Lowered slightly to ensure stricter adherence to the V Nagel formatting rules
           response_mime_type: "application/json"
         }
       })

@@ -20,7 +20,10 @@ export default function EditSongPage() {
   const [language, setLanguage] = useState('');
   const [originalAuthor, setOriginalAuthor] = useState('');
   const [lyrics, setLyrics] = useState('');
-  const [transliteration, setTransliteration] = useState('');
+  
+  // Phonetics and Translations
+  const [transliterationEng, setTransliterationEng] = useState('');
+  const [transliterationMal, setTransliterationMal] = useState('');
   const [meaningEng, setMeaningEng] = useState('');
   const [meaningMal, setMeaningMal] = useState('');
   const [story, setStory] = useState('');
@@ -42,7 +45,8 @@ export default function EditSongPage() {
           setLanguage(data.language || 'English');
           setOriginalAuthor(data.originalAuthor || '');
           setLyrics(data.lyrics || '');
-          setTransliteration(data.transliterationEnglish || '');
+          setTransliterationEng(data.transliterationEnglish || '');
+          setTransliterationMal(data.transliterationMalayalam || '');
           setMeaningEng(data.meaningEnglish || '');
           setMeaningMal(data.meaningMalayalam || '');
           setStory(data.story || '');
@@ -59,12 +63,23 @@ export default function EditSongPage() {
     try {
       const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
       await updateDoc(doc(db, 'songs', params.id as string), {
-        title, language, originalAuthor, lyrics, transliterationEnglish: transliteration,
-        meaningEnglish: meaningEng, meaningMalayalam: meaningMal, story, authorName,
+        title, 
+        language, 
+        originalAuthor, 
+        lyrics, 
+        transliterationEnglish: transliterationEng,
+        transliterationMalayalam: transliterationMal,
+        meaningEnglish: meaningEng, 
+        meaningMalayalam: meaningMal, 
+        story, 
+        authorName,
         updatedAt: new Date().toISOString()
       });
       router.push(`/songbook/${params.id}`);
-    } catch (error) { alert("Failed to update song."); setIsSaving(false); }
+    } catch (error) { 
+        alert("Failed to update song."); 
+        setIsSaving(false); 
+    }
   };
 
   if (authLoading || isLoading) return <div className="flex min-h-screen items-center justify-center text-slate-500"><Loader2 className="animate-spin mr-2" /> Loading Editor...</div>;
@@ -91,6 +106,8 @@ export default function EditSongPage() {
                 <option value="Tamil">Tamil</option>
                 <option value="Kannada">Kannada</option>
                 <option value="Hindi">Hindi</option>
+                <option value="Telugu">Telugu</option>
+                <option value="Gujarati">Gujarati</option>
               </select>
             </div>
             <div className="col-span-2">
@@ -99,7 +116,7 @@ export default function EditSongPage() {
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Composer / Original Author</label>
-              <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition" value={originalAuthor} onChange={e => setOriginalAuthor(e.target.value)} placeholder="e.g. Fanny Crosby" />
+              <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition" value={originalAuthor} onChange={e => setOriginalAuthor(e.target.value)} placeholder="e.g. V Nagel" />
             </div>
           </div>
 
@@ -109,9 +126,19 @@ export default function EditSongPage() {
           </div>
 
           {language !== 'English' && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between"><span>English Transliteration</span></label>
-              <textarea rows={6} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition leading-relaxed" value={transliteration} onChange={e => setTransliteration(e.target.value)} />
+            <div className="pt-4 border-t border-slate-100 grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">English Phonetics (Sing-along script)</label>
+                <textarea rows={5} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition leading-relaxed" value={transliterationEng} onChange={e => setTransliterationEng(e.target.value)} />
+              </div>
+              
+              {/* NEW: Malayalam Phonetics text box */}
+              {language !== 'Malayalam' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-sky-700">Malayalam Phonetics (Sing-along script)</label>
+                  <textarea rows={5} className="w-full p-4 bg-sky-50 border border-sky-100 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition leading-relaxed" value={transliterationMal} onChange={e => setTransliterationMal(e.target.value)} />
+                </div>
+              )}
             </div>
           )}
 

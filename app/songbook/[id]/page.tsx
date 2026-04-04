@@ -5,9 +5,8 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit2, Trash2, Loader2, Music, BookOpen, ImageIcon, Clock, Info, User } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Loader2, Music, BookOpen, ImageIcon, Clock, Info } from 'lucide-react';
 
-// Helper for exact IST Time
 const formatIST = (isoString: string) => {
   if (!isoString) return 'N/A';
   return new Date(isoString).toLocaleString('en-IN', {
@@ -25,13 +24,12 @@ export default function ViewSongPage() {
   const [song, setSong] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // LEVEL 1: Main Tabs
   const [activeTab, setActiveTab] = useState<'lyrics' | 'meaning' | 'story' | 'image'>('lyrics');
   
-  // LEVEL 2: Sub-Toggles & Text Size State
-  const [lyricsView, setLyricsView] = useState<'original' | 'english'>('original');
+  // UPDATED: Added Malayalam to the view toggle
+  const [lyricsView, setLyricsView] = useState<'original' | 'english' | 'malayalam'>('original');
   const [meaningView, setMeaningView] = useState<'english' | 'malayalam'>('english');
-  const [isLargeText, setIsLargeText] = useState(false); // NEW: Font size toggle state
+  const [isLargeText, setIsLargeText] = useState(false); 
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -78,7 +76,6 @@ export default function ViewSongPage() {
   const isEnglish = song.language === 'English';
   const isMalayalam = song.language === 'Malayalam';
 
-  // DYNAMIC TEXT SIZING CLASSES
   const dynamicTextSize = isLargeText 
     ? 'text-2xl md:text-3xl leading-loose font-medium' 
     : 'text-lg md:text-xl leading-relaxed';
@@ -89,14 +86,12 @@ export default function ViewSongPage() {
     <div className="min-h-screen bg-slate-50 p-6 pb-24">
       <div className="max-w-3xl mx-auto">
         
-        {/* TOP BAR */}
         <div className="flex justify-between items-center mb-6">
           <Link href="/songbook" className="inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
             <ArrowLeft size={16} className="mr-1" /> Back to Songbook
           </Link>
           
           <div className="flex gap-2">
-            {/* NEW: FONT SIZE TOGGLE BUTTON */}
             <button 
               onClick={() => setIsLargeText(!isLargeText)} 
               className={`px-3 py-2 border rounded-lg transition shadow-sm flex items-end justify-center gap-0.5 ${isLargeText ? 'bg-sky-100 border-sky-300 text-sky-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-sky-50'}`}
@@ -106,11 +101,9 @@ export default function ViewSongPage() {
               <span className="text-base font-bold leading-none">A</span>
             </button>
 
-            {/* EVERYONE CAN EDIT */}
             <Link href={`/songbook/${song.id}/edit`} className="p-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition shadow-sm">
               <Edit2 size={18} />
             </Link>
-            {/* ONLY ADMIN CAN DELETE */}
             {isAdmin && (
               <button onClick={handleDelete} className="p-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition shadow-sm">
                 <Trash2 size={18} />
@@ -119,7 +112,6 @@ export default function ViewSongPage() {
           </div>
         </div>
 
-        {/* 1. SLEEK, COMPACT HEADER DESIGN BASED ON FEEDBACK */}
         <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 mb-6 flex items-center gap-3">
           <div className="shrink-0 w-12 h-12 bg-sky-50 text-sky-600 font-bold text-xl rounded-xl border border-sky-100 flex items-center justify-center">
             {song.songNumber || '#'}
@@ -133,10 +125,7 @@ export default function ViewSongPage() {
           </div>
         </div>
 
-        {/* 2. COMPLETELY REDESIGNED TAB CONTAINER */}
         <div className="space-y-6">
-          
-          {/* LEVEL 1: Centered Pill Toggle with horizontal scrolling for mobile */}
           <div className="flex justify-center overflow-x-auto hide-scrollbar">
             <div className="inline-flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm whitespace-nowrap">
               <button onClick={() => setActiveTab('lyrics')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'lyrics' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -147,7 +136,6 @@ export default function ViewSongPage() {
                 <BookOpen size={16} className="mr-2"/> Meaning
               </button>
 
-              {/* NEW CONDITIONAL STORY TAB */}
               {song.story && (
                 <button onClick={() => setActiveTab('story')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'story' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
                   <Info size={16} className="mr-2"/> Story
@@ -162,37 +150,42 @@ export default function ViewSongPage() {
             </div>
           </div>
 
-          {/* LEVEL 2: Sub-Toggles & Content Area */}
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 min-h-[400px]">
             
-            {/* LYRICS TAB CONTENT */}
+            {/* LYRICS TAB */}
             {activeTab === 'lyrics' && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
                 
-                {/* LEVEL 2 TOGGLE FOR LYRICS */}
-                {!isEnglish && song.transliterationEnglish && (
-                  <div className="flex bg-slate-100 p-1 rounded-xl mb-8 max-w-sm mx-auto border border-slate-200">
-                    <button onClick={() => setLyricsView('original')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${lyricsView === 'original' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}>
+                {/* UPDATED: 3-Way Toggle for Phonetics */}
+                {!isEnglish && (song.transliterationEnglish || song.transliterationMalayalam) && (
+                  <div className="flex bg-slate-100 p-1 rounded-xl mb-8 max-w-md mx-auto border border-slate-200">
+                    <button onClick={() => setLyricsView('original')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${lyricsView === 'original' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                       Original Script
                     </button>
-                    <button onClick={() => setLyricsView('english')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${lyricsView === 'english' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}>
-                      English Phonetics
-                    </button>
+                    {song.transliterationEnglish && (
+                      <button onClick={() => setLyricsView('english')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${lyricsView === 'english' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Eng Phonetics
+                      </button>
+                    )}
+                    {song.transliterationMalayalam && !isMalayalam && (
+                      <button onClick={() => setLyricsView('malayalam')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${lyricsView === 'malayalam' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Mal Phonetics
+                      </button>
+                    )}
                   </div>
                 )}
                 
-                {/* APPLIED DYNAMIC FONT CLASSES (Centered) */}
                 <div className={`${baseTextClasses} text-center`}>
-                  {lyricsView === 'original' ? song.lyrics : (song.transliterationEnglish || song.lyrics)}
+                  {lyricsView === 'original' && song.lyrics}
+                  {lyricsView === 'english' && (song.transliterationEnglish || song.lyrics)}
+                  {lyricsView === 'malayalam' && (song.transliterationMalayalam || song.lyrics)}
                 </div>
               </div>
             )}
 
-            {/* MEANING TAB CONTENT */}
+            {/* MEANING TAB */}
             {activeTab === 'meaning' && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
-                
-                {/* 3. SMART LOGIC FOR MEANING TOGGLES */}
                 {isMalayalam ? (
                   <div className={`${baseTextClasses} text-center italic !text-slate-600 bg-slate-50 p-6 rounded-2xl border border-slate-100`}>
                     {song.meaningEnglish || "English meaning not available for this Malayalam song."}
@@ -205,16 +198,14 @@ export default function ViewSongPage() {
                    <>
                     {(song.meaningEnglish || song.meaningMalayalam) ? (
                         <>
-                          {/* LEVEL 2 TOGGLE FOR MEANING */}
                           <div className="flex bg-slate-100 p-1 rounded-xl mb-8 max-w-sm mx-auto border border-slate-200">
-                            <button onClick={() => setMeaningView('english')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${meaningView === 'english' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}>
+                            <button onClick={() => setMeaningView('english')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${meaningView === 'english' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                               English
                             </button>
-                            <button onClick={() => setMeaningView('malayalam')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${meaningView === 'malayalam' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500'}`}>
+                            <button onClick={() => setMeaningView('malayalam')} className={`flex-1 flex items-center justify-center py-2 text-xs font-bold rounded-lg transition ${meaningView === 'malayalam' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                               Malayalam
                             </button>
                           </div>
-                          {/* APPLIED DYNAMIC FONT CLASSES (Centered) */}
                           <div className={`${baseTextClasses} text-center italic !text-slate-600 bg-slate-50 p-6 rounded-2xl border border-slate-100`}>
                             {meaningView === 'english' ? (song.meaningEnglish || "English meaning not available.") : (song.meaningMalayalam || "Malayalam meaning not available.")}
                           </div>
@@ -227,20 +218,19 @@ export default function ViewSongPage() {
               </div>
             )}
 
-            {/* NEW STORY TAB CONTENT */}
+            {/* STORY TAB */}
             {activeTab === 'story' && song.story && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 text-left">
                   <h3 className="text-lg font-serif font-bold text-slate-800 mb-4 flex items-center">
                     <Info size={20} className="mr-2 text-sky-500"/> The Story Behind the Song
                   </h3>
-                  {/* APPLIED DYNAMIC FONT CLASSES (Left Aligned) */}
                   <div className={`${baseTextClasses} text-left`}>{song.story}</div>
                 </div>
               </div>
             )}
 
-            {/* IMAGE TAB CONTENT */}
+            {/* IMAGE TAB */}
             {activeTab === 'image' && song.imageUrl && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
                 <img src={song.imageUrl} alt={`Original sheet music for ${song.title}`} className="w-full h-auto rounded-xl border border-slate-200 shadow-sm" />
@@ -249,7 +239,6 @@ export default function ViewSongPage() {
           </div>
         </div>
 
-        {/* FOOTER (Audit Trail) */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 mt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2 shadow-sm">
           <span className="font-medium text-slate-500">Last updated by: <span className="text-slate-700 font-bold">{song.authorName || 'Unknown'}</span></span>
           <span className="flex items-center"><Clock size={12} className="mr-1" /> {formatIST(song.updatedAt || song.createdAt)}</span>
