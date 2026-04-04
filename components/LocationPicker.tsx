@@ -129,7 +129,8 @@ export default function LocationPicker({
         const location = results[0].geometry.location;
         setTempLat(location.lat());
         setTempLng(location.lng());
-        setTempMapAddress(results[0].formatted_address);
+        // FIXED: Use the exact prediction description instead of the stripped formatted_address
+        setTempMapAddress(prediction.description);
       } else {
         setError("Failed to locate that exact address on the map.");
       }
