@@ -37,18 +37,46 @@ export default function LocationPicker({
   const [tempLng, setTempLng] = useState<number | null>(null);
   const [tempMapAddress, setTempMapAddress] = useState('');
 
-  // NEW: Search State
+  // Search & Dropdown State
   const [searchInput, setSearchInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     if (isMapOpen) {
       setTempLat(lat);
       setTempLng(lng);
       setTempMapAddress(mapAddress || '');
-      setSearchInput(''); // Clear search on open
+      setSearchInput('');
+      setSearchResults([]);
+      setShowDropdown(false);
     }
   }, [isMapOpen, lat, lng, mapAddress]);
+
+  // LIVE AUTOCOMPLETE EFFECT
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchInput.trim().length > 2) {
+        setIsSearching(true);
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchInput)}&limit=5`);
+          const data = await res.json();
+          setSearchResults(data);
+          setShowDropdown(true);
+        } catch (err) {
+          console.error('Search failed:', err);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+        setShowDropdown(false);
+      }
+    }, 600); // Wait 600ms after user stops typing to fetch
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchInput]);
 
   const handleGetLocation = () => {
     setIsLocating(true);
@@ -73,26 +101,12 @@ export default function LocationPicker({
     );
   };
 
-  // NEW: Handle Text Search to jump the map
-  const handleSearch = async () => {
-    if (!searchInput.trim()) return;
-    setIsSearching(true);
-    setError('');
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchInput)}`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        setTempLat(parseFloat(data[0].lat));
-        setTempLng(parseFloat(data[0].lon));
-        setTempMapAddress(data[0].display_name);
-      } else {
-        setError('Address not found. Try a broader search like a city or zip code.');
-      }
-    } catch (err) {
-      setError('Search failed. Check your connection.');
-    } finally {
-      setIsSearching(false);
-    }
+  const handleSelectResult = (result: any) => {
+    setTempLat(parseFloat(result.lat));
+    setTempLng(parseFloat(result.lon));
+    setTempMapAddress(result.display_name);
+    setSearchInput('');
+    setShowDropdown(false);
   };
 
   const handleConfirmMap = () => {
@@ -145,32 +159,42 @@ export default function LocationPicker({
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[85vh]">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-bold text-slate-800">Set {type} Location</h3>
-              {/* FIXED: Added type="button" */}
               <button type="button" onClick={() => setIsMapOpen(false)}><X size={20} className="text-slate-400" /></button>
             </div>
             
             <div className="p-4 flex-1 flex flex-col gap-3">
-              {/* NEW: Map Search Bar */}
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault(); // Stop form submission
-                      handleSearch();
-                    }
-                  }}
-                  placeholder="Search city, street, or area..." 
-                  className="flex-1 px-3 py-2 text-sm border bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-teal-500" 
-                />
-                {/* FIXED: Added type="button" */}
-                <button type="button" onClick={handleSearch} disabled={isSearching} className="bg-teal-600 p-2 rounded-lg text-white hover:bg-teal-700 transition shadow-sm">
-                  {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                </button>
-                {/* FIXED: Added type="button" */}
-                <button type="button" onClick={handleGetLocation} className="bg-slate-100 p-2 rounded-lg text-slate-700 border hover:bg-slate-200 transition" title="Use my GPS location">
+              
+              {/* THE AUTOCOMPLETE SEARCH BAR */}
+              <div className="flex gap-2 relative">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    {isSearching ? <Loader2 size={16} className="text-slate-400 animate-spin" /> : <Search size={16} className="text-slate-400" />}
+                  </div>
+                  <input 
+                    type="text" 
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Type to search for an address..." 
+                    className="w-full pl-9 pr-3 py-2.5 text-sm border bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-teal-500" 
+                  />
+                  
+                  {/* DROPDOWN MENU */}
+                  {showDropdown && searchResults.length > 0 && (
+                    <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                      {searchResults.map((res, index) => (
+                        <li 
+                          key={index} 
+                          onClick={() => handleSelectResult(res)}
+                          className="px-4 py-2.5 text-xs text-slate-700 hover:bg-teal-50 border-b border-slate-100 last:border-0 cursor-pointer transition"
+                        >
+                          {res.display_name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <button type="button" onClick={handleGetLocation} className="bg-slate-100 p-2.5 rounded-lg text-slate-700 border hover:bg-slate-200 transition" title="Use my GPS location">
                   <Navigation size={18} />
                 </button>
               </div>
@@ -197,9 +221,7 @@ export default function LocationPicker({
             </div>
 
             <div className="p-4 border-t flex justify-end gap-3 bg-slate-50">
-              {/* FIXED: Added type="button" */}
               <button type="button" onClick={() => setIsMapOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg">Cancel</button>
-              {/* FIXED: Added type="button" */}
               <button type="button" onClick={handleConfirmMap} disabled={!tempLat} className="px-5 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50 shadow-sm">Confirm Address</button>
             </div>
           </div>

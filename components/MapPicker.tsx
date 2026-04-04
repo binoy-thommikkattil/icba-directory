@@ -2,22 +2,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useJsApiLoader, GoogleMap, Marker as GoogleMarker } from '@react-google-maps/api';
 
-// 1. Tell TypeScript about the Google Maps global fallback function
 declare global {
   interface Window {
     gm_authFailure: () => void;
   }
 }
 
-// 2. Standard imports for react-leaflet 
-// (Safe because LocationPicker dynamically imports this entire file with ssr: false)
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+// IMPORTED useMap to control the camera
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 
-// 3. Bypass the strict TypeScript check for the CSS import
 // @ts-ignore
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet Icons for Next.js
 let L: any;
 if (typeof window !== 'undefined') {
   L = require('leaflet');
@@ -36,7 +32,17 @@ interface MapPickerProps {
   onPinDrop: (lat: number, lng: number, address: string) => void;
 }
 
-// LEAFLET EVENT HANDLER
+// NEW: This forces the Leaflet Map to center on new searched coordinates
+function MapUpdater({ lat, lng }: { lat: number | null, lng: number | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.flyTo([lat, lng], 16, { animate: true, duration: 1 });
+    }
+  }, [lat, lng, map]);
+  return null;
+}
+
 function LeafletEvents({ onPinDrop }: { onPinDrop: (lat: number, lng: number, address: string) => void }) {
   useMapEvents({
     async click(e: any) {
@@ -59,13 +65,11 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
   
   const [mapProvider, setMapProvider] = useState<'google' | 'leaflet'>('google');
 
-  // LOAD GOOGLE MAPS SCRIPT
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   });
 
-  // FALLBACK LOGIC: If Google fails (quota, bad key, network), switch to Leaflet
   useEffect(() => {
     if (loadError || !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
       setMapProvider('leaflet');
@@ -81,7 +85,6 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
 
-    // Google Reverse Geocoding
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === 'OK' && results && results[0]) {
@@ -98,6 +101,8 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {initialLat && initialLng && <Marker position={[initialLat, initialLng]} />}
         <LeafletEvents onPinDrop={onPinDrop} />
+        {/* ADDED: MapUpdater to handle flying to searched coordinates */}
+        <MapUpdater lat={initialLat} lng={initialLng} />
       </MapContainer>
     );
   }
