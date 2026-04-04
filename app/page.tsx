@@ -52,7 +52,7 @@ export default function PublicHomePage() {
               <h3 className="text-lg font-bold text-slate-900 mb-2">Sunday Worship</h3>
               <p className="text-slate-600 mb-4">Join us every Sunday morning for the breaking of bread and worship.</p>
               <span className="text-sky-700 bg-sky-50 px-4 py-2 rounded-full font-bold text-sm mt-auto border border-sky-100">
-                9:45 AM - 12:30 PM
+                9:00 AM - 11:15 PM
               </span>
             </div>
 

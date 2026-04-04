@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MapPin, Clock, Calendar, Music, BookOpen, Mic, Info, Smile, HandHeart, Users, Megaphone, BookOpenText, BookSearch, Globe } from 'lucide-react';
+import { MapPin, Clock, Calendar, Music, BookOpen, Mic, Info, Smile, HandHeart, Users, Megaphone, BookOpenText, BookSearch, Globe, Coffee } from 'lucide-react';
 import Footer from '@/components/Footer';
 import PublicNavbar from '@/components/PublicNavbar';
 
@@ -14,6 +14,7 @@ export default function VisitPage() {
     { time: '10:20', period: 'AM', title: 'Announcements & Testimony', desc: "Assembly updates and sharing of God's goodness", icon: Megaphone },
     { time: '10:30', period: 'AM', title: 'Message', desc: 'Expository preaching from the Holy Scriptures', icon: BookOpenText },
     { time: '11:15', period: 'AM', title: 'Prayer', desc: 'Closing prayer and benediction', icon: HandHeart },
+    { time: '11:20', period: 'AM', title: 'Break', desc: 'Fellowship over refreshments', icon: Coffee },
     { time: '11:30', period: 'AM', title: 'Second Meetings', desc: 'Dedicated sessions for Youth, Bachelors, Sisters, Brothers, and Sunday School', icon: BookSearch }
   ];
 
