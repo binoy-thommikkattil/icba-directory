@@ -12,7 +12,7 @@ export default function PublicNavbar() {
         </Link>
         
         {/* Desktop Links - Light slate turning to pure white on hover */}
-        <div className="space-x-6 text-sm font-medium text-slate-300 hidden md:flex items-center shrink-0 relative">
+        <div className="flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-hide pb-2 md:pb-0 w-full">
           <Link href="/" className="hover:text-white transition">Home</Link>
           <Link href="/visit" className="hover:text-white transition">Visit Us</Link>
           <Link href="/beliefs" className="hover:text-white transition">Our Beliefs</Link>

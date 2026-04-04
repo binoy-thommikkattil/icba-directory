@@ -1,20 +1,20 @@
 import Link from 'next/link';
-import { MapPin, Clock, Calendar, Music, BookOpen, Mic, Info, Coffee, Users, ChevronLeft, Globe } from 'lucide-react';
+import { MapPin, Clock, Calendar, Music, BookOpen, Mic, Info, Smile, HandHeart, Users, Megaphone, BookOpenText, BookSearch, Globe } from 'lucide-react';
 import Footer from '@/components/Footer';
 import PublicNavbar from '@/components/PublicNavbar';
 
 export default function VisitPage() {
   const serviceSteps = [
-    { time: '9:00', period: 'AM', title: 'Opening Songs', desc: 'Congregational singing in Malayalam and English', icon: Music },
-    { time: '9:10', period: 'AM', title: 'Welcome', desc: 'Greeting and welcoming the assembly', icon: Users },
-    { time: '9:15', period: 'AM', title: 'Prayer', desc: "Seeking the Lord's presence and guidance", icon: Info },
+    { time: '9:00', period: 'AM', title: 'Opening Songs', desc: 'Congregational singing', icon: Music },
+    { time: '9:10', period: 'AM', title: 'Welcome', desc: 'Greeting and welcoming the visitors', icon: Smile },
+    { time: '9:15', period: 'AM', title: 'Prayer', desc: "Seeking the Lord's presence and guidance", icon: HandHeart },
     { time: '9:20', period: 'AM', title: 'Devotion', desc: 'A short sharing from the Word to prepare our hearts', icon: BookOpen },
-    { time: '9:40', period: 'AM', title: 'Praise & Worship', desc: 'A dedicated time of adoring our Lord', icon: Mic },
-    { time: '10:00', period: 'AM', title: 'Breaking of Bread', desc: "Remembering the Lord's death until He comes", icon: Coffee },
-    { time: '10:20', period: 'AM', title: 'Announcements & Testimony', desc: "Assembly updates and sharing of God's goodness", icon: Info },
-    { time: '10:30', period: 'AM', title: 'Message', desc: 'Expository preaching from the Holy Scriptures', icon: BookOpen },
-    { time: '11:15', period: 'AM', title: 'Benediction', desc: 'Closing prayer and blessing', icon: Info },
-    { time: '11:30', period: 'AM', title: 'Ministry Gatherings', desc: 'Dedicated sessions for Youth, Bachelors, Sisters, Brothers, and Sunday School', icon: Users }
+    { time: '9:40', period: 'AM', title: 'Praise & Worship', desc: 'A dedicated time of adoring our Lord', icon: HandHeart },
+    { time: '10:00', period: 'AM', title: 'Breaking of Bread', desc: "Remembering the Lord's death until He comes", icon: Users },
+    { time: '10:20', period: 'AM', title: 'Announcements & Testimony', desc: "Assembly updates and sharing of God's goodness", icon: Megaphone },
+    { time: '10:30', period: 'AM', title: 'Message', desc: 'Expository preaching from the Holy Scriptures', icon: BookOpenText },
+    { time: '11:15', period: 'AM', title: 'Prayer', desc: 'Closing prayer and benediction', icon: HandHeart },
+    { time: '11:30', period: 'AM', title: 'Second Meetings', desc: 'Dedicated sessions for Youth, Bachelors, Sisters, Brothers, and Sunday School', icon: BookSearch }
   ];
 
   return (
