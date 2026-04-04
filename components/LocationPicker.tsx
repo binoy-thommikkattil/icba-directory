@@ -2,11 +2,15 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Navigation, Loader2, Map as MapIcon, X, Search } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useJsApiLoader } from '@react-google-maps/api';
 
 const MapPicker = dynamic(() => import('./MapPicker'), { 
   ssr: false, 
   loading: () => <div className="flex h-full items-center justify-center bg-slate-100 text-slate-500 rounded-xl">Loading map...</div>
 });
+
+// CRITICAL: This array must be defined OUTSIDE the component to prevent infinite reloading
+const libraries: any = ['places'];
 
 interface LocationPickerProps {
   label: string;
@@ -37,11 +41,17 @@ export default function LocationPicker({
   const [tempLng, setTempLng] = useState<number | null>(null);
   const [tempMapAddress, setTempMapAddress] = useState('');
 
-  // Search & Dropdown State
   const [searchInput, setSearchInput] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Load Google Maps API with the Places library
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries
+  });
 
   useEffect(() => {
     if (isMapOpen) {
@@ -54,29 +64,34 @@ export default function LocationPicker({
     }
   }, [isMapOpen, lat, lng, mapAddress]);
 
-  // LIVE AUTOCOMPLETE EFFECT
+  // GOOGLE PLACES AUTOCOMPLETE EFFECT
   useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchInput.trim().length > 2) {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchInput.trim().length > 2 && isLoaded && window.google) {
         setIsSearching(true);
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchInput)}&limit=5`);
-          const data = await res.json();
-          setSearchResults(data);
-          setShowDropdown(true);
-        } catch (err) {
-          console.error('Search failed:', err);
-        } finally {
-          setIsSearching(false);
-        }
+        const autocompleteService = new window.google.maps.places.AutocompleteService();
+        
+        autocompleteService.getPlacePredictions(
+          { input: searchInput },
+          (predictions, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+              setSearchResults(predictions);
+              setShowDropdown(true);
+            } else {
+              setSearchResults([]);
+              setShowDropdown(false);
+            }
+            setIsSearching(false);
+          }
+        );
       } else {
         setSearchResults([]);
         setShowDropdown(false);
       }
-    }, 600); // Wait 600ms after user stops typing to fetch
+    }, 400); // 400ms debounce to save API calls
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchInput]);
+  }, [searchInput, isLoaded]);
 
   const handleGetLocation = () => {
     setIsLocating(true);
@@ -101,12 +116,46 @@ export default function LocationPicker({
     );
   };
 
-  const handleSelectResult = (result: any) => {
-    setTempLat(parseFloat(result.lat));
-    setTempLng(parseFloat(result.lon));
-    setTempMapAddress(result.display_name);
-    setSearchInput('');
+  // HANDLE CLICKING A GOOGLE PREDICTION
+  const handleSelectResult = (prediction: any) => {
+    setSearchInput(prediction.description);
     setShowDropdown(false);
+    setIsSearching(true);
+
+    // Ask Google for the exact Lat/Lng of the selected place
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ placeId: prediction.place_id }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        const location = results[0].geometry.location;
+        setTempLat(location.lat());
+        setTempLng(location.lng());
+        setTempMapAddress(results[0].formatted_address);
+      } else {
+        setError("Failed to locate that exact address on the map.");
+      }
+      setIsSearching(false);
+    });
+  };
+
+  // HANDLE PRESSING ENTER (Fallback Geocoding)
+  const handleManualSearch = () => {
+    if (!searchInput.trim() || !isLoaded) return;
+    setIsSearching(true);
+    setError('');
+    setShowDropdown(false);
+
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: searchInput }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        const location = results[0].geometry.location;
+        setTempLat(location.lat());
+        setTempLng(location.lng());
+        setTempMapAddress(results[0].formatted_address);
+      } else {
+        setError('Address not found. Please try selecting an option from the dropdown.');
+      }
+      setIsSearching(false);
+    });
   };
 
   const handleConfirmMap = () => {
@@ -164,7 +213,6 @@ export default function LocationPicker({
             
             <div className="p-4 flex-1 flex flex-col gap-3">
               
-              {/* THE AUTOCOMPLETE SEARCH BAR */}
               <div className="flex gap-2 relative">
                 <div className="relative flex-1">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -174,32 +222,42 @@ export default function LocationPicker({
                     type="text" 
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Type to search for an address..." 
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault(); 
+                        e.stopPropagation(); 
+                        handleManualSearch();
+                      }
+                    }}
+                    placeholder="Search Google Maps..." 
                     className="w-full pl-9 pr-3 py-2.5 text-sm border bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-teal-500" 
                   />
                   
-                  {/* DROPDOWN MENU */}
                   {showDropdown && searchResults.length > 0 && (
                     <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                       {searchResults.map((res, index) => (
                         <li 
                           key={index} 
                           onClick={() => handleSelectResult(res)}
-                          className="px-4 py-2.5 text-xs text-slate-700 hover:bg-teal-50 border-b border-slate-100 last:border-0 cursor-pointer transition"
+                          className="px-4 py-2.5 text-xs text-slate-700 hover:bg-teal-50 border-b border-slate-100 last:border-0 cursor-pointer transition flex items-start gap-2"
                         >
-                          {res.display_name}
+                          <MapPin size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                          <span className="leading-snug">{res.description}</span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
 
+                <button type="button" onClick={handleManualSearch} disabled={isSearching || !isLoaded} className="bg-teal-600 p-2.5 rounded-lg text-white hover:bg-teal-700 transition shadow-sm">
+                  {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                </button>
                 <button type="button" onClick={handleGetLocation} className="bg-slate-100 p-2.5 rounded-lg text-slate-700 border hover:bg-slate-200 transition" title="Use my GPS location">
                   <Navigation size={18} />
                 </button>
               </div>
 
-              {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+              {error && <p className="text-xs text-amber-600 font-medium bg-amber-50 p-2 rounded border border-amber-100 leading-relaxed">{error}</p>}
               
               {tempMapAddress && (
                 <p className="text-xs text-teal-700 font-medium bg-teal-50 p-2 rounded border border-teal-100">

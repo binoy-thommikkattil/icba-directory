@@ -8,7 +8,6 @@ declare global {
   }
 }
 
-// IMPORTED useMap to control the camera
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 
 // @ts-ignore
@@ -26,13 +25,15 @@ if (typeof window !== 'undefined') {
   L.Marker.prototype.options.icon = DefaultIcon;
 }
 
+// CRITICAL: Must exactly match the libraries array in LocationPicker.tsx
+const libraries: any = ['places'];
+
 interface MapPickerProps {
   initialLat: number | null;
   initialLng: number | null;
   onPinDrop: (lat: number, lng: number, address: string) => void;
 }
 
-// NEW: This forces the Leaflet Map to center on new searched coordinates
 function MapUpdater({ lat, lng }: { lat: number | null, lng: number | null }) {
   const map = useMap();
   useEffect(() => {
@@ -65,9 +66,11 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
   
   const [mapProvider, setMapProvider] = useState<'google' | 'leaflet'>('google');
 
+  // MATCHES LocationPicker.tsx
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries
   });
 
   useEffect(() => {
@@ -101,7 +104,6 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {initialLat && initialLng && <Marker position={[initialLat, initialLng]} />}
         <LeafletEvents onPinDrop={onPinDrop} />
-        {/* ADDED: MapUpdater to handle flying to searched coordinates */}
         <MapUpdater lat={initialLat} lng={initialLng} />
       </MapContainer>
     );
