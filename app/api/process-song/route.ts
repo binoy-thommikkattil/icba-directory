@@ -40,8 +40,14 @@ export async function POST(req: Request) {
     
     "language": The language of the song. If the user provided "Auto-Detect", identify the exact language (e.g., Malayalam, Hindi, Kannada, Telugu, Gujarati, Tamil, English).
     
-    "originalAuthor": The composer or writer. If the user provided one, use it. If NONE, try to identify the composer from history. CRITICAL UNIFORMITY RULE: Always use initials for first/middle names (e.g., ALWAYS output "V Nagel" instead of Volbrecht Nagel, "T K Samuel" instead of T.K. Samuel, "Fanny J Crosby", etc.). If entirely unknown, return an empty string "".
-    
+    "originalAuthor": The composer or writer.
+      Rules:
+      - If the user provided an author, use it.
+      - If no author is provided, only return an author if you are highly confident (≥90%) based on well-documented sources.
+      - Do NOT guess based on style, language, or theme.
+      - If uncertain, return an empty string "".
+      - If multiple or unclear attributions exist, return "".
+
     "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
     
     "transliterationEnglish": The lyrics phonetically spelled out using English letters, matching the lyrics perfectly so a user can sing along. Keep repetitions.
@@ -53,7 +59,7 @@ export async function POST(req: Request) {
     "meaningMalayalam": A poetic translation into Malayalam leveraging shared linguistic roots. Apply the same anti-repetition rule.
     
     "story": A concise, 3-5 sentence historical background or story behind the writing of this song. CRITICAL ANTI-HALLUCINATION RULE: If you do not have highly confident, verifiable facts about this specific song, you MUST return an empty string "". DO NOT guess.`;
-    
+
     parts.push({ text: systemPrompt });
 
     // 4. CALL THE GEMINI API
