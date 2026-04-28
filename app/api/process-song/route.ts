@@ -36,17 +36,11 @@ export async function POST(req: Request) {
     
     The JSON must have exactly these 9 string keys:
     
-    "title": The title of the song. If the user provided a title, use it. If the user provided NONE, auto-detect the known title of the hymn. If unknown, use the first 3-5 words of the lyrics as the title.
+    "title": The title of the song. If the user provided a title, use it. If the user provided NONE, auto-detect the known title of the hymn. If unknown, use the first 3-5 words of the lyrics as the title in English.
     
     "language": The language of the song. If the user provided "Auto-Detect", identify the exact language (e.g., Malayalam, Hindi, Kannada, Telugu, Gujarati, Tamil, English).
     
-    "originalAuthor": The composer or writer.
-      Rules:
-      - If the user provided an author, use it.
-      - If no author is provided, only return an author if you are highly confident (≥90%) based on well-documented sources.
-      - Do NOT guess based on style, language, or theme.
-      - If uncertain, return an empty string "".
-      - If multiple or unclear attributions exist, return "".
+    "originalAuthor": The composer or writer.If the user provided an author, use it.If no author is provided, only return an author if you are highly confident (≥90%) based on well-documented sources.Do NOT guess based on style, language, or theme.If uncertain, return an empty string "".If multiple or unclear attributions exist, return "".
 
     "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
     
