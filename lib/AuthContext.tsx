@@ -32,18 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const userDoc = await getDoc(userDocRef);
         
+        // --- THE FIX: We create a memory flag ---
+        let hasProfileExisted = false; 
+
         if (userDoc.exists()) {
+          hasProfileExisted = true; // The user has an established profile
           setRole(userDoc.data().role);
           setUserProfile(userDoc.data());
         } else {
-          // ==========================================
-          // BRAND NEW USER ONBOARDING LOGIC
-          // ==========================================
-          // Check exactly HOW they are registering
+          // New User Onboarding!
           const providerId = firebaseUser.providerData[0]?.providerId;
 
           if (providerId === 'google.com') {
-            // Google users bypass our manual Login form, so we MUST auto-create their profile here.
             const newProfile = {
               email: firebaseUser.email || '',
               phone: firebaseUser.phoneNumber || '', 
@@ -54,11 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await setDoc(userDocRef, newProfile);
             setRole('pending');
             setUserProfile(newProfile);
+            hasProfileExisted = true; // They now have an established profile
           } else {
-            // Email/Password or Phone OTP user!
-            // Do absolutely nothing here. Let the Login.tsx page finish executing its 
-            // setDoc function so it can save the custom Name and Phone number they typed.
-            // The real-time watcher below will trigger automatically once Login.tsx is done!
+            // They are logging in with Phone or Email and are currently staring at 
+            // the "Enter your Name" prompt. We do nothing and let them finish!
             setRole(null);
             setUserProfile(null);
           }
@@ -67,16 +66,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // REAL-TIME WATCHER
         unsubscribeSnapshot = onSnapshot(userDocRef, (snap) => {
-          if (!snap.exists()) {
-            // Admin deleted their profile! Log them out instantly.
-            firebaseSignOut(auth);
-            setUser(null);
-            setRole(null);
-            setUserProfile(null);
-          } else {
-            // Admin approved them, OR Login.tsx just finished saving their name! Update instantly.
+          if (snap.exists()) {
+            hasProfileExisted = true; // They successfully saved their name from the Login page!
             setRole(snap.data().role);
             setUserProfile(snap.data());
+          } else {
+            // SMART AUTO-KICK: Only sign them out if they HAD a profile and it was deleted!
+            if (hasProfileExisted) {
+              firebaseSignOut(auth);
+              setUser(null);
+              setRole(null);
+              setUserProfile(null);
+            }
           }
         });
 
