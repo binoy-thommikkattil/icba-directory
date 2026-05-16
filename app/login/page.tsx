@@ -29,7 +29,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailPhone, setEmailPhone] = useState('');
-  
+
   // Phone States
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -39,7 +39,8 @@ export default function Login() {
 
   // Auto-Routing
   useEffect(() => {
-    if (user && !authLoading && !showNamePrompt) {
+    // ADDED 'role' check: Only route them away if their database role actually exists!
+    if (user && !authLoading && role && !showNamePrompt) {
       if (role === 'pending') router.push('/waiting-room');
       else router.push('/dashboard');
     }
@@ -49,8 +50,8 @@ export default function Login() {
   useEffect(() => {
     if (loginMethod === 'phone' && !(window as any).recaptchaVerifier) {
       try {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 
-          size: 'invisible' 
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible'
         });
       } catch (err) {
         console.error("Recaptcha Init Error:", err);
@@ -103,18 +104,18 @@ export default function Login() {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
-    
+
     try {
       // 1. Strip all non-numeric characters from the input
       let cleanNumber = phoneNumber.replace(/\D/g, '');
-      
+
       // 2. Format to exactly 12 digits (91 + 10 digit number)
       if (cleanNumber.length === 10) {
         cleanNumber = `91${cleanNumber}`;
       } else if (cleanNumber.length === 11 && cleanNumber.startsWith('0')) {
         cleanNumber = `91${cleanNumber.substring(1)}`;
       }
-      
+
       const formattedPhone = `+${cleanNumber}`;
 
       // 3. Strict pre-flight validation
@@ -126,13 +127,13 @@ export default function Login() {
 
       // 4. Send to Firebase
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
-      
+
       setConfirmationResult(confirmation);
       setShowOtpInput(true);
 
     } catch (err: any) {
       console.error("Firebase Phone Auth Error:", err);
-      
+
       // Provide hyper-specific error messages to help you debug
       if (err.code === 'auth/operation-not-allowed') {
         setError('Phone Auth is not enabled! Go to Firebase Console -> Authentication -> Sign-in Method and enable Phone.');
@@ -190,7 +191,7 @@ export default function Login() {
         createdAt: new Date().toISOString()
       });
 
-      setShowNamePrompt(false); 
+      setShowNamePrompt(false);
     } catch (err: any) {
       setError(err.message || 'Failed to save profile.');
       setLoading(false);
@@ -279,20 +280,20 @@ export default function Login() {
               <form onSubmit={handleSendOTP} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">10-Digit Mobile Number</label>
-                  
+
                   {/* UPDATED UI: Hardcoded +91 visually inside the input box */}
                   <div className="relative">
                     <span className="absolute left-4 top-3.5 text-slate-500 font-bold border-r border-slate-200 pr-3">+91</span>
-                    <input 
-                      required 
-                      type="tel" 
-                      placeholder="98765 43210" 
-                      className="w-full pl-16 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition font-medium tracking-wide" 
-                      value={phoneNumber} 
-                      onChange={e => setPhoneNumber(e.target.value)} 
+                    <input
+                      required
+                      type="tel"
+                      placeholder="98765 43210"
+                      className="w-full pl-16 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition font-medium tracking-wide"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
                     />
                   </div>
-                  
+
                 </div>
                 <button type="submit" disabled={loading} className="w-full bg-slate-800 text-white p-3.5 rounded-xl font-bold hover:bg-slate-900 transition shadow-sm flex justify-center items-center">
                   {loading ? <Loader2 className="animate-spin" size={20} /> : 'Send OTP via SMS'}

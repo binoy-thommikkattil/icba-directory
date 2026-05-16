@@ -39,27 +39,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // ==========================================
           // BRAND NEW USER ONBOARDING LOGIC
           // ==========================================
-          
-          // CRITICAL FIX: If they logged in via Phone OTP, they don't have an email yet.
-          // We must NOT auto-create their document here, because Login.tsx is currently 
-          // holding them at the "Enter your Full Name" prompt! 
-          if (firebaseUser.phoneNumber && !firebaseUser.email) {
-            // Do nothing. Let the Login page finish. The onSnapshot listener below 
-            // will automatically trigger as soon as the Login page saves their name!
-            setRole(null);
-            setUserProfile(null);
-          } else {
-            // It's a Google Sign-In or Email Sign-Up. We can safely auto-create their profile.
+          // Check exactly HOW they are registering
+          const providerId = firebaseUser.providerData[0]?.providerId;
+
+          if (providerId === 'google.com') {
+            // Google users bypass our manual Login form, so we MUST auto-create their profile here.
             const newProfile = {
               email: firebaseUser.email || '',
-              phone: firebaseUser.phoneNumber || '', // Captures phone if available
+              phone: firebaseUser.phoneNumber || '', 
               name: firebaseUser.displayName || 'Unknown Member',
-              role: 'pending', // Removed the dangerous 'admin' loophole. Everyone starts pending.
+              role: 'pending',
               createdAt: new Date().toISOString()
             };
             await setDoc(userDocRef, newProfile);
             setRole('pending');
             setUserProfile(newProfile);
+          } else {
+            // Email/Password or Phone OTP user!
+            // Do absolutely nothing here. Let the Login.tsx page finish executing its 
+            // setDoc function so it can save the custom Name and Phone number they typed.
+            // The real-time watcher below will trigger automatically once Login.tsx is done!
+            setRole(null);
+            setUserProfile(null);
           }
         }
         setLoading(false);
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setRole(null);
             setUserProfile(null);
           } else {
-            // Admin approved them! Update the app instantly.
+            // Admin approved them, OR Login.tsx just finished saving their name! Update instantly.
             setRole(snap.data().role);
             setUserProfile(snap.data());
           }

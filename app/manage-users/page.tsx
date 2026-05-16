@@ -6,7 +6,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { logActivity } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-// ADDED Phone and Mail icons
 import { ArrowLeft, Users, Trash2, Loader2, ShieldCheck, Phone, Mail } from 'lucide-react';
 
 export default function ManageUsersPage() {
@@ -32,7 +31,6 @@ export default function ManageUsersPage() {
   const handleDeleteUser = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to revoke access for ${name}?`)) {
       await deleteDoc(doc(db, 'users', id));
-      // LOG THE ACTION
       await logActivity(userProfile, 'Revoked User Access', `Deleted account for ${name}`);
     }
   };
@@ -65,14 +63,16 @@ export default function ManageUsersPage() {
                 }`}>{u.role}</span>
               </div>
               
-              {/* UPDATED CONTACT INFO LOGIC */}
-              <div className="text-xs text-slate-500 mt-1">
-                {u.phone ? (
-                  <span className="flex items-center"><Phone size={12} className="mr-1.5" /> {u.phone}</span>
-                ) : u.email ? (
-                  <span className="flex items-center"><Mail size={12} className="mr-1.5" /> {u.email}</span>
-                ) : (
-                  <span className="italic">No contact info</span>
+              {/* UPDATED CONTACT INFO LOGIC: Shows BOTH if they exist */}
+              <div className="text-xs text-slate-500 mt-1.5 space-y-1">
+                {u.phone && (
+                  <span className="flex items-center"><Phone size={12} className="mr-1.5 text-slate-400" /> {u.phone}</span>
+                )}
+                {u.email && (
+                  <span className="flex items-center"><Mail size={12} className="mr-1.5 text-slate-400" /> {u.email}</span>
+                )}
+                {!u.phone && !u.email && (
+                  <span className="italic">No contact info provided</span>
                 )}
               </div>
 
