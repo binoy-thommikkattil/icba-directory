@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -25,66 +25,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubscribeSnapshot: () => void; 
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-
-        const userDoc = await getDoc(userDocRef);
         
-        // --- THE FIX: We create a memory flag ---
         let hasProfileExisted = false; 
 
-        if (userDoc.exists()) {
-          hasProfileExisted = true; // The user has an established profile
-          setRole(userDoc.data().role);
-          setUserProfile(userDoc.data());
-        } else {
-          // New User Onboarding!
-          const providerId = firebaseUser.providerData[0]?.providerId;
-
-          if (providerId === 'google.com') {
-            const newProfile = {
-              email: firebaseUser.email || '',
-              phone: firebaseUser.phoneNumber || '', 
-              name: firebaseUser.displayName || 'Unknown Member',
-              role: 'pending',
-              createdAt: new Date().toISOString()
-            };
-            await setDoc(userDocRef, newProfile);
-            setRole('pending');
-            setUserProfile(newProfile);
-            hasProfileExisted = true; // They now have an established profile
-          } else {
-            // They are logging in with Phone or Email and are currently staring at 
-            // the "Enter your Name" prompt. We do nothing and let them finish!
-            setRole(null);
-            setUserProfile(null);
-          }
-        }
-        setLoading(false);
-
-        // REAL-TIME WATCHER
+        // THE FIX: AuthContext no longer creates profiles. It just passively watches.
         unsubscribeSnapshot = onSnapshot(userDocRef, (snap) => {
           if (snap.exists()) {
-            hasProfileExisted = true; // They successfully saved their name from the Login page!
+            hasProfileExisted = true; 
             setRole(snap.data().role);
             setUserProfile(snap.data());
+            setLoading(false); 
           } else {
-            // SMART AUTO-KICK: Only sign them out if they HAD a profile and it was deleted!
+            // Profile doesn't exist yet.
             if (hasProfileExisted) {
+              // It existed but disappeared. Admin deleted them! Auto-kick.
               firebaseSignOut(auth);
-              setUser(null);
+              setUser(null); setRole(null); setUserProfile(null);
+            } else {
+              // They are a brand new user currently typing their name on the Login page.
+              // Just sit back and let Login.tsx finish its job!
               setRole(null);
               setUserProfile(null);
+              setLoading(false); 
             }
           }
         });
 
       } else {
-        setUser(null); 
-        setRole(null); 
-        setUserProfile(null);
+        setUser(null); setRole(null); setUserProfile(null);
         setLoading(false);
         if (unsubscribeSnapshot) unsubscribeSnapshot(); 
       }
