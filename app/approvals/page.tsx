@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { logActivity } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X, ArrowRight, MapPin } from 'lucide-react';
+// ADDED Phone and Mail icons
+import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X, ArrowRight, MapPin, Phone, Mail } from 'lucide-react';
 
 // --- THE DIFF VIEWER COMPONENT ---
 const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
@@ -14,7 +15,7 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
 
   const getDifferences = () => {
     const diffs = [];
-    
+
     // 1. Check standard text fields (ADDED MAP ADDRESSES)
     const fieldsToTrack = [
       { key: 'familyName', label: 'Primary Member (Family Name)' },
@@ -35,7 +36,7 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
       }
     });
 
-    // 2. NEW: Check exact GPS Coordinate changes (Supporting both new Lat/Lng and old Coordinates object)
+    // 2. NEW: Check exact GPS Coordinate changes
     const oldCurrentLat = original.currentLat || original.currentCoordinates?.lat;
     const oldCurrentLng = original.currentLng || original.currentCoordinates?.lng;
     const newCurrentLat = draft.currentLat || draft.currentCoordinates?.lat;
@@ -74,7 +75,7 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
     // 4. Check Members Array
     const oldMembersStr = JSON.stringify(original.members || []);
     const newMembersStr = JSON.stringify(draft.members || []);
-    
+
     if (oldMembersStr !== newMembersStr) {
       diffs.push({
         label: 'Family Members',
@@ -99,7 +100,7 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
       {changes.map((change, idx) => (
         <div key={idx} className="p-3 border border-slate-200 rounded-xl bg-white shadow-sm">
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">{change.label}</p>
-          
+
           {change.isComplex ? (
             <div className="space-y-2">
               <div className="bg-red-50 p-2.5 rounded-lg border border-red-100">
@@ -165,15 +166,17 @@ export default function ApprovalsPage() {
     return () => { unUsers(); unCreations(); unEdits(); };
   }, [role]);
 
+  // UPDATED: Logs correct contact info instead of just "u.email"
   const handleApproveUser = async (u: any) => {
     await updateDoc(doc(db, 'users', u.id), { role: 'approved' });
-    await logActivity(userProfile, 'Approved User Access', `Granted directory access to ${u.email}`);
+    await logActivity(userProfile, 'Approved User Access', `Granted directory access to ${u.phone || u.email || u.name}`);
   };
 
+  // UPDATED: More generic alert and logs correct info
   const handleRejectUser = async (u: any) => {
-    if (confirm("Deny access to this email?")) {
+    if (confirm("Deny access to this user?")) {
       await deleteDoc(doc(db, 'users', u.id));
-      await logActivity(userProfile, 'Denied User Access', `Rejected access request for ${u.email}`);
+      await logActivity(userProfile, 'Denied User Access', `Rejected access request for ${u.phone || u.email || u.name}`);
     }
   };
 
@@ -227,7 +230,21 @@ export default function ApprovalsPage() {
           <div className="space-y-3">
             {pendingUsers.map(u => (
               <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center gap-4">
-                <div className="min-w-0 flex-1"><p className="font-bold text-slate-900 truncate">{u.name}</p><p className="text-sm text-slate-500 truncate">{u.email}</p></div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-900 truncate">{u.name || 'Unknown Name'}</p>
+                  
+                  {/* UPDATED UI: Intelligently shows Phone or Mail with Icon */}
+                  <div className="text-xs text-slate-500 mt-1">
+                    {u.phone ? (
+                      <span className="flex items-center"><Phone size={12} className="mr-1.5" /> {u.phone}</span>
+                    ) : u.email ? (
+                      <span className="flex items-center"><Mail size={12} className="mr-1.5" /> {u.email}</span>
+                    ) : (
+                      <span className="italic">No contact info</span>
+                    )}
+                  </div>
+
+                </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => handleApproveUser(u)} className="p-2 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100"><CheckCircle size={18} /></button>
                   <button onClick={() => handleRejectUser(u)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><XCircle size={18} /></button>
@@ -284,7 +301,7 @@ export default function ApprovalsPage() {
             </div>
 
             <div className="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-6">
-              
+
               <div className="bg-white text-slate-700 p-4 rounded-xl border border-slate-200 text-sm font-medium flex items-center shadow-sm">
                 <ShieldAlert size={18} className="mr-3 shrink-0 text-slate-400" />
                 <span><span className="text-slate-500">Submitted by:</span> <strong className="text-slate-900">{activeData.submittedBy || 'Unknown Member'}</strong></span>
@@ -299,12 +316,12 @@ export default function ApprovalsPage() {
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Status</span><span className="text-slate-600">{activeData.status || 'Active'}</span></div>
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Mobile</span><span className="text-slate-600">{activeData.primaryMobile || '-'}</span></div>
-                      
-                      {/* UPDATED: Combines Manual Address + Map Address and checks for Lat/Lng */}
+
+                      {/* Combines Manual Address + Map Address and checks for Lat/Lng */}
                       <div className="flex border-b border-slate-100 pb-2">
                         <span className="font-bold text-slate-700 w-1/3">Current Addr</span>
                         <span className="text-slate-600">
-                          {[activeData.currentAddress, activeData.currentMapAddress].filter(Boolean).join(', ') || '-'} 
+                          {[activeData.currentAddress, activeData.currentMapAddress].filter(Boolean).join(', ') || '-'}
                           {(activeData.currentLat || activeData.currentCoordinates) && <span className="text-teal-600 text-[10px] uppercase font-bold ml-2 block mt-0.5"><MapPin size={10} className="inline mr-1" /> GPS Pin Set</span>}
                         </span>
                       </div>

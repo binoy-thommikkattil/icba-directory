@@ -20,6 +20,9 @@ export default function WaitingRoom() {
 
   if (loading || !user) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-teal-600" size={32} /></div>;
 
+  // Identify the contact method used to sign in
+  const contactMethod = user.email || user.phoneNumber || 'your credentials';
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center animate-in fade-in slide-in-from-bottom-4">
@@ -30,7 +33,7 @@ export default function WaitingRoom() {
         
         <h1 className="text-2xl font-serif font-bold text-slate-900 mb-3">Pending Verification</h1>
         <p className="text-slate-600 mb-6 text-sm leading-relaxed">
-          Your account has been securely created with <strong className="text-slate-800">{user.email}</strong>. 
+          Your account has been securely created with <strong className="text-slate-800">{contactMethod}</strong>. 
           For the privacy of our assembly, a church administrator must verify your account before you can view the directory.
         </p>
 

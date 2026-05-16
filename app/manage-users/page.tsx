@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
-import { logActivity } from '@/lib/logger'; // ADD THIS IMPORT
+import { logActivity } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, Trash2, Loader2, ShieldCheck } from 'lucide-react';
+// ADDED Phone and Mail icons
+import { ArrowLeft, Users, Trash2, Loader2, ShieldCheck, Phone, Mail } from 'lucide-react';
 
 export default function ManageUsersPage() {
-  const { role, userProfile, loading: authLoading } = useAuth(); // ADD userProfile
+  const { role, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,14 +57,25 @@ export default function ManageUsersPage() {
           <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-bold text-slate-900 truncate">{u.name}</span>
+                <span className="font-bold text-slate-900 truncate">{u.name || 'Unknown Name'}</span>
                 {u.role === 'admin' && <ShieldCheck size={14} className="text-amber-500" />}
                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
                   u.role === 'admin' ? 'bg-amber-100 text-amber-700' : 
                   u.role === 'approved' ? 'bg-teal-100 text-teal-700' : 'bg-slate-200 text-slate-600'
                 }`}>{u.role}</span>
               </div>
-              <p className="text-xs text-slate-500 truncate">{u.email}</p>
+              
+              {/* UPDATED CONTACT INFO LOGIC */}
+              <div className="text-xs text-slate-500 mt-1">
+                {u.phone ? (
+                  <span className="flex items-center"><Phone size={12} className="mr-1.5" /> {u.phone}</span>
+                ) : u.email ? (
+                  <span className="flex items-center"><Mail size={12} className="mr-1.5" /> {u.email}</span>
+                ) : (
+                  <span className="italic">No contact info</span>
+                )}
+              </div>
+
             </div>
             
             {u.role !== 'admin' && (

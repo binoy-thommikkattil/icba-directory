@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 export default function TopBar() {
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const pathname = usePathname();
 
   // 1. THE WHITELIST: Define all the private directory-related base paths
@@ -40,7 +40,9 @@ export default function TopBar() {
       </Link>
       
       <div className="flex items-center space-x-4 text-sm">
-        <span className="text-slate-500 hidden sm:inline whitespace-nowrap">Welcome back</span>
+        <span className="text-slate-500 hidden sm:inline whitespace-nowrap">
+  Welcome back <strong className="text-teal-700">{userProfile?.name || 'Member'}</strong>
+</span>
         <button onClick={logout} className="px-4 py-2 bg-slate-100 text-slate-800 font-medium rounded-lg hover:bg-slate-200 transition shadow-sm whitespace-nowrap">
           Logout
         </button>
