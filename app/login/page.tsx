@@ -26,7 +26,7 @@ export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
@@ -44,7 +44,7 @@ export default function Login() {
     if (loginMethod === 'phone' && !(window as any).recaptchaVerifier) {
       try {
         (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-      } catch (err) {}
+      } catch (err) { }
     }
   }, [loginMethod]);
 
@@ -55,7 +55,7 @@ export default function Login() {
     setLoading(true); setError('');
     try {
       const cred = await signInWithPopup(auth, new GoogleAuthProvider());
-      
+
       // NEW: Check if they are a first-time Google user and create their profile
       const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
       if (!userDoc.exists()) {
@@ -96,7 +96,24 @@ export default function Login() {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      setError(err.message.includes('auth/') ? 'Invalid email or password.' : err.message || 'Authentication failed.');
+      // 1. Prints the exact error to your browser console for debugging
+      console.error("Firebase Auth Error:", err);
+
+      // 2. SMART ERROR HANDLING: Tells the user exactly what is wrong
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('CRITICAL: Email/Password sign-in is not enabled! Please enable it in the Firebase Console under Authentication.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please log in instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Please use at least 6 characters.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        setError('Invalid email or password.');
+      } else {
+        setError(err.message ? err.message.replace('Firebase: ', '') : 'Authentication failed.');
+      }
+
       setLoading(false);
     }
   };
@@ -107,7 +124,7 @@ export default function Login() {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
-    
+
     try {
       let cleanNumber = phoneNumber.replace(/\D/g, '');
       if (cleanNumber.length === 10) cleanNumber = `91${cleanNumber}`;
@@ -123,7 +140,7 @@ export default function Login() {
       if (err.code === 'auth/operation-not-allowed') setError('Phone Auth is not enabled in Firebase Console.');
       else if (err.code === 'auth/invalid-phone-number') setError('Firebase rejected the phone format.');
       else setError(err.message || 'Failed to send OTP.');
-      
+
       if ((window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier.render().then((widgetId: any) => {
           (window as any).grecaptcha.reset(widgetId);
@@ -168,7 +185,7 @@ export default function Login() {
         createdAt: new Date().toISOString()
       });
 
-      setShowNamePrompt(false); 
+      setShowNamePrompt(false);
     } catch (err: any) {
       setError(err.message || 'Failed to save profile.');
       setLoading(false);
