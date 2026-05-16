@@ -159,9 +159,9 @@ export default function VisitPage() {
               <div className="pt-8 border-t border-slate-100">
                 <h3 className="text-lg font-bold text-slate-900 mb-4">Have Questions?</h3>
                 <p className="text-slate-600 mb-4">If you need help finding us or have any questions before your visit, please feel free to reach out.</p>
-                <a href="mailto:contact@example.com" className="inline-block bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition shadow-sm">
+                {/* <a href="mailto:contact@example.com" className="inline-block bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition shadow-sm">
                   Contact Us
-                </a>
+                </a> */}
               </div>
             </div>
 
