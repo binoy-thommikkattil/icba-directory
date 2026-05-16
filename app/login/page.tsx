@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { BookOpen, Loader2, Phone, Mail } from 'lucide-react';
 
 export default function Login() {
+  // Global States
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,72 +24,68 @@ export default function Login() {
   const router = useRouter();
   const { user, role, loading: authLoading } = useAuth();
 
+  // Email States
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+  const [emailPhone, setEmailPhone] = useState('');
+
+  // Phone States
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
+  // Auto-Routing
   useEffect(() => {
+    // ADDED 'role' check: Only route them away if their database role actually exists!
     if (user && !authLoading && role && !showNamePrompt) {
       if (role === 'pending') router.push('/waiting-room');
       else router.push('/dashboard');
     }
   }, [user, role, authLoading, showNamePrompt, router]);
 
+  // Safely initialize Recaptcha when switching to Phone Login
   useEffect(() => {
     if (loginMethod === 'phone' && !(window as any).recaptchaVerifier) {
       try {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-      } catch (err) {}
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible'
+        });
+      } catch (err) {
+        console.error("Recaptcha Init Error:", err);
+      }
     }
   }, [loginMethod]);
 
   // ============================
-  // GOOGLE AUTH LOGIC
+  // EMAIL & GOOGLE AUTH LOGIC
   // ============================
   const handleGoogleSignIn = async () => {
     setLoading(true); setError('');
     try {
-      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
-      
-      // NEW: Check if they are a first-time Google user and create their profile
-      const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', cred.user.uid), {
-          email: cred.user.email || '',
-          name: cred.user.displayName || 'Google User',
-          role: 'pending',
-          createdAt: new Date().toISOString()
-        });
-      }
+      await signInWithPopup(auth, new GoogleAuthProvider());
     } catch (err: any) {
       setError('Google sign-in failed. Please try again.');
       setLoading(false);
     }
   };
 
-  // ============================
-  // EMAIL AUTH LOGIC
-  // ============================
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
     try {
       if (isSignUp) {
-        if (!name.trim()) throw new Error("Full Name is required.");
+        if (!emailPhone.trim()) throw new Error("Mobile Number is required.");
 
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: name });
 
-        // Safely write the exact name they typed into the database
         await setDoc(doc(db, 'users', cred.user.uid), {
           email: cred.user.email,
-          name: name.trim(),
+          name: name,
+          phone: emailPhone,
           role: 'pending',
           createdAt: new Date().toISOString()
         });
@@ -107,23 +104,48 @@ export default function Login() {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
-    
+
     try {
+      // 1. Strip all non-numeric characters from the input
       let cleanNumber = phoneNumber.replace(/\D/g, '');
-      if (cleanNumber.length === 10) cleanNumber = `91${cleanNumber}`;
-      else if (cleanNumber.length === 11 && cleanNumber.startsWith('0')) cleanNumber = `91${cleanNumber.substring(1)}`;
+
+      // 2. Format to exactly 12 digits (91 + 10 digit number)
+      if (cleanNumber.length === 10) {
+        cleanNumber = `91${cleanNumber}`;
+      } else if (cleanNumber.length === 11 && cleanNumber.startsWith('0')) {
+        cleanNumber = `91${cleanNumber.substring(1)}`;
+      }
+
       const formattedPhone = `+${cleanNumber}`;
 
-      if (formattedPhone.length !== 13) throw new Error(`Invalid format. Expected 10 digits.`);
+      // 3. Strict pre-flight validation
+      if (formattedPhone.length !== 13) {
+        throw new Error(`Invalid format. Expected 10 digits, but got ${cleanNumber.replace('91', '').length}.`);
+      }
 
+      console.log("Attempting to send OTP to:", formattedPhone);
+
+      // 4. Send to Firebase
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
+
       setConfirmationResult(confirmation);
       setShowOtpInput(true);
+
     } catch (err: any) {
-      if (err.code === 'auth/operation-not-allowed') setError('Phone Auth is not enabled in Firebase Console.');
-      else if (err.code === 'auth/invalid-phone-number') setError('Firebase rejected the phone format.');
-      else setError(err.message || 'Failed to send OTP.');
-      
+      console.error("Firebase Phone Auth Error:", err);
+
+      // Provide hyper-specific error messages to help you debug
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Phone Auth is not enabled! Go to Firebase Console -> Authentication -> Sign-in Method and enable Phone.');
+      } else if (err.code === 'auth/invalid-phone-number') {
+        setError('Firebase rejected the phone format. Ensure it is a valid Indian number.');
+      } else if (err.message && err.message.includes('reCAPTCHA')) {
+        setError('reCAPTCHA verification failed. Refresh the page and try again.');
+      } else {
+        setError(err.message || 'Failed to send OTP.');
+      }
+
+      // Reset recaptcha if it fails so the user can try again
       if ((window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier.render().then((widgetId: any) => {
           (window as any).grecaptcha.reset(widgetId);
@@ -140,6 +162,7 @@ export default function Login() {
     try {
       const result = await confirmationResult.confirm(otp);
       const verifiedUser = result.user;
+
       const userDoc = await getDoc(doc(db, 'users', verifiedUser.uid));
 
       if (userDoc.exists()) {
@@ -162,13 +185,13 @@ export default function Login() {
       if (!name.trim()) throw new Error("Name is required");
 
       await setDoc(doc(db, 'users', auth.currentUser!.uid), {
-        name: name.trim(),
+        name: name,
         phone: auth.currentUser!.phoneNumber,
         role: 'pending',
         createdAt: new Date().toISOString()
       });
 
-      setShowNamePrompt(false); 
+      setShowNamePrompt(false);
     } catch (err: any) {
       setError(err.message || 'Failed to save profile.');
       setLoading(false);
@@ -185,6 +208,7 @@ export default function Login() {
 
         {error && <p className="text-red-500 text-sm mb-4 p-3 bg-red-50 rounded-lg border border-red-100">{error}</p>}
 
+        {/* LOGIN METHOD TOGGLE */}
         {!showNamePrompt && (
           <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
             <button onClick={() => { setLoginMethod('email'); setError(''); }} type="button" className={`flex-1 flex items-center justify-center py-2.5 text-sm font-bold rounded-lg transition ${loginMethod === 'email' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -196,18 +220,25 @@ export default function Login() {
           </div>
         )}
 
+        {/* MANDATORY RECAPTCHA CONTAINER */}
         <div id="recaptcha-container"></div>
 
         {/* ==============================
-            EMAIL FORM (Phone Field Removed)
+            EMAIL FORM
         ============================== */}
         {loginMethod === 'email' && !showNamePrompt && (
           <>
             <form onSubmit={handleEmailAuth} className="space-y-4 mb-6 text-left">
               {isSignUp && (
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Full Name</label>
-                  <input required type="text" placeholder="e.g. John Mark" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition" value={name} onChange={e => setName(e.target.value)} />
+                <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Full Name</label>
+                    <input required type="text" placeholder="e.g. John Mark" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition" value={name} onChange={e => setName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Mobile Number</label>
+                    <input required type="tel" placeholder="9876543210" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition" value={emailPhone} onChange={e => setEmailPhone(e.target.value)} />
+                  </div>
                 </div>
               )}
               <div>
@@ -249,10 +280,20 @@ export default function Login() {
               <form onSubmit={handleSendOTP} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">10-Digit Mobile Number</label>
+
+                  {/* UPDATED UI: Hardcoded +91 visually inside the input box */}
                   <div className="relative">
                     <span className="absolute left-4 top-3.5 text-slate-500 font-bold border-r border-slate-200 pr-3">+91</span>
-                    <input required type="tel" placeholder="98765 43210" className="w-full pl-16 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition font-medium tracking-wide" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
+                    <input
+                      required
+                      type="tel"
+                      placeholder="98765 43210"
+                      className="w-full pl-16 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-teal-500 focus:bg-white transition font-medium tracking-wide"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
+                    />
                   </div>
+
                 </div>
                 <button type="submit" disabled={loading} className="w-full bg-slate-800 text-white p-3.5 rounded-xl font-bold hover:bg-slate-900 transition shadow-sm flex justify-center items-center">
                   {loading ? <Loader2 className="animate-spin" size={20} /> : 'Send OTP via SMS'}
