@@ -98,19 +98,16 @@ export default function VisitPage() {
             </div>
 
             <div className="relative">
-              {/* Center Line (Desktop) / Left Line (Mobile) */}
               <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 bg-slate-700 -ml-px"></div>
 
               {serviceSteps.map((step, index) => (
                 <div key={index} className={`relative flex items-center mb-10 last:mb-0 ${index % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
                   
-                  {/* Circular Time Badge */}
                   <div className="absolute left-8 md:left-1/2 w-16 h-16 bg-white border-4 border-slate-900 rounded-full flex flex-col items-center justify-center -translate-x-1/2 shadow-lg z-10">
                     <span className="text-slate-900 font-bold text-sm leading-none">{step.time}</span>
                     <span className="text-slate-500 text-[10px] font-bold mt-1">{step.period}</span>
                   </div>
 
-                  {/* Content Card */}
                   <div className={`w-full pl-24 md:pl-0 md:w-1/2 ${index % 2 === 0 ? 'md:pr-16 text-left md:text-right' : 'md:pl-16 text-left'}`}>
                     <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 hover:border-sky-500/50 transition duration-300 group">
                       <div className={`flex items-center gap-3 mb-1.5 ${index % 2 === 0 ? 'md:justify-end' : ''}`}>
@@ -127,8 +124,8 @@ export default function VisitPage() {
           </div>
         </section>
         
-        {/* LOCATION & MAP */}
-        <section className="py-20 px-6 bg-white">
+        {/* LOCATION & MAP - ADDED ID AND SCROLL-MT HERE */}
+        <section id="map-section" className="py-20 px-6 bg-white scroll-mt-24">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-12 items-center">
             
             <div className="w-full md:w-1/3 space-y-8">
@@ -159,13 +156,9 @@ export default function VisitPage() {
               <div className="pt-8 border-t border-slate-100">
                 <h3 className="text-lg font-bold text-slate-900 mb-4">Have Questions?</h3>
                 <p className="text-slate-600 mb-4">If you need help finding us or have any questions before your visit, please feel free to reach out.</p>
-                {/* <a href="mailto:contact@example.com" className="inline-block bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition shadow-sm">
-                  Contact Us
-                </a> */}
               </div>
             </div>
 
-            {/* EMBEDDED MAP EXACT ADDRESS */}
             <div className="w-full md:w-2/3 h-[400px] md:h-[500px] bg-slate-100 rounded-3xl overflow-hidden border border-slate-200 shadow-inner">
               <iframe 
                 src="https://maps.google.com/maps?q=Immanuel%20Christian%20Believers%20Assembly%2C%201st%20Cross%20Road%2C%20%23305%2C%205th%20Main%20Rd%2C%20Jagadish%20Nagar%2C%20New%20Tippasandra%2C%20Bengaluru%2C%20Karnataka%20560075&t=&z=15&ie=UTF8&iwloc=&output=embed" 

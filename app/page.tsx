@@ -66,7 +66,7 @@ export default function PublicHomePage() {
                 Jagadish Nagar, New Tippasandra,<br/>
                 Bengaluru, Karnataka 560075
               </p>
-              <Link href="/visit" className="text-sky-600 font-bold text-sm mt-auto hover:underline">View Map & Directions</Link>
+              <Link href="/visit#map-section" className="text-sky-600 font-bold text-sm mt-auto hover:underline">View Map & Directions</Link>
             </div>
 
             <div className="bg-white p-8 rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center">
