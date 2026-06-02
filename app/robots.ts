@@ -5,9 +5,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      // Block Google from crawling your private directory pages!
-      disallow: ['/dashboard/', '/directory/', '/meetings/', '/waiting-room/'],
+      // Strictly block Google from scanning your private app pages and backend APIs
+      disallow: ['/dashboard/', '/waiting-room/', '/api/'],
     },
+    // Points Google directly to your sitemap
     sitemap: 'https://immanuel-assembly.com/sitemap.xml',
   };
 }
