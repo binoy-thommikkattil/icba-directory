@@ -64,7 +64,7 @@ export default function VisitPage() {
                 <h3 className="text-xl font-bold text-slate-800 mb-1">Thursday</h3>
                 <p className="text-slate-600 font-medium mb-3">Prayer Meeting</p>
                 <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
-                  <Clock size={16} className="mr-2" /> 7:15 PM - 8:00 PM
+                  <Clock size={16} className="mr-2" /> 7:00 PM - 8:00 PM
                 </div>
               </div>
 
@@ -74,7 +74,7 @@ export default function VisitPage() {
                   Sisters Meeting <span className="text-[10px] uppercase tracking-wider bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full flex items-center"><Globe size={10} className="mr-1" /> Online</span>
                 </p>
                 <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
-                  <Clock size={16} className="mr-2" /> 7:15 PM - 8:00 PM
+                  <Clock size={16} className="mr-2" /> 7:00 PM - 8:00 PM
                 </div>
               </div>
 
@@ -82,7 +82,7 @@ export default function VisitPage() {
                 <h3 className="text-xl font-bold text-slate-800 mb-1">Saturday</h3>
                 <p className="text-slate-600 font-medium mb-3">Bible Study</p>
                 <div className="mt-auto inline-flex items-center bg-white px-4 py-2 rounded-full text-sm font-bold text-slate-700 shadow-sm border border-slate-100">
-                  <Clock size={16} className="mr-2" /> 6:00 PM - 7:30 PM
+                  <Clock size={16} className="mr-2" /> 6:30 PM - 7:40 PM
                 </div>
               </div>
             </div>
