@@ -32,12 +32,12 @@ const getBase64ImageFromUrl = async (imageUrl: string): Promise<{ dataUrl: strin
 
 function DirectoryContent() {
   const [families, setFamilies] = useState<any[]>([]);
-  const [dbLoading, setDbLoading] = useState(true); 
+  const [dbLoading, setDbLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const { user, userProfile, loading: authLoading } = useAuth(); 
+
+  const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Retrieve Search Parameters natively
@@ -82,21 +82,21 @@ function DirectoryContent() {
       // Handle Tag Filtering (H1 Request)
       if (filterTag) {
         const hasTag = ind.tags?.some((t: string) => {
-            const tagStr = t.toLowerCase();
-            if (filterTag === 'youth' && (tagStr.includes('youth') || tagStr.includes('young family'))) return true;
-            if (filterTag === 'bachelor' && (tagStr.includes('bachelor') || tagStr.includes('unmarried') || tagStr.includes('spinster'))) return true;
-            if (filterTag === 'sunday-school' && (tagStr.includes('sunday school') || tagStr.includes('sundayschool'))) return true;
-            return false;
+          const tagStr = t.toLowerCase();
+          if (filterTag === 'youth' && (tagStr.includes('youth') || tagStr.includes('young family'))) return true;
+          if (filterTag === 'bachelor' && (tagStr.includes('bachelor') || tagStr.includes('unmarried') || tagStr.includes('spinster'))) return true;
+          if (filterTag === 'sunday-school' && (tagStr.includes('sunday school') || tagStr.includes('sundayschool'))) return true;
+          return false;
         });
         if (!hasTag) return false;
       }
 
       return ind.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             ind.familyName.toLowerCase().includes(searchTerm.toLowerCase());
+        ind.familyName.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
     // Clean exact duplication
-    return matchedIndividuals.filter((ind, index, self) => 
+    return matchedIndividuals.filter((ind, index, self) =>
       index === self.findIndex((m) => m.name.toLowerCase() === ind.name.toLowerCase())
     );
   }, [allIndividuals, searchTerm, isAdmin, filterTag]);
@@ -170,16 +170,18 @@ function DirectoryContent() {
         pdf.addPage();
         addPageFooter();
         yPos = 30;
-        
+
         pdf.setFontSize(20);
         pdf.text(`${family.familyName}`, margin, yPos);
         yPos += 10;
 
         if (family.photoUrl) {
-          const imgData = await getBase64ImageFromUrl(family.photoUrl);
+          // Add a unique timestamp to force the browser to download a fresh, CORS-approved image
+          const safeImageUrl = `${family.photoUrl}?v=${new Date().getTime()}`;
+          const imgData = await getBase64ImageFromUrl(safeImageUrl);
           if (imgData) {
-            let printWidth = 80; 
-            let printHeight = 60; 
+            let printWidth = 80;
+            let printHeight = 60;
             const imgRatio = imgData.width / imgData.height;
             const targetRatio = printWidth / printHeight;
 
@@ -190,7 +192,7 @@ function DirectoryContent() {
             }
 
             pdf.addImage(imgData.dataUrl, 'JPEG', margin, yPos, printWidth, printHeight);
-            yPos += printHeight + 12; 
+            yPos += printHeight + 12;
           }
         }
 
@@ -297,11 +299,11 @@ function DirectoryContent() {
   if (dbLoading) return <div className="p-8 flex h-screen items-center justify-center font-bold text-slate-500">Loading directory data...</div>;
 
   const selectedFamilyData = families.find(f => f.id === selectedFamilyId);
-  
+
   const pageTitle = filterTag === 'youth' ? 'Youth Directory' :
-                    filterTag === 'bachelor' ? 'Bachelors Directory' :
-                    filterTag === 'sunday-school' ? 'Sunday School Directory' :
-                    'ICBA Directory';
+    filterTag === 'bachelor' ? 'Bachelors Directory' :
+      filterTag === 'sunday-school' ? 'Sunday School Directory' :
+        'ICBA Directory';
 
   return (
     <main className="w-full max-w-xl mx-auto relative overflow-hidden md:border-x border-slate-100 min-h-screen">
@@ -310,7 +312,7 @@ function DirectoryContent() {
           <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 transition">
             <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
           </Link>
-          
+
           <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">{pageTitle}</h1>
 
           {filterTag === 'bachelor' && <p className="text-sm text-slate-500 mb-6">Showing members with tags 'bachelor' or 'unmarried'.</p>}
@@ -339,14 +341,14 @@ function DirectoryContent() {
           </div>
 
           {filteredIndividuals.length === 0 ? (
-             <div className="text-center py-10 bg-white rounded-xl border border-slate-200">
-               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                 <Users size={24} className="text-slate-400" />
-               </div>
-               <p className="text-slate-500 font-medium">No members found.</p>
-             </div>
+            <div className="text-center py-10 bg-white rounded-xl border border-slate-200">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users size={24} className="text-slate-400" />
+              </div>
+              <p className="text-slate-500 font-medium">No members found.</p>
+            </div>
           ) : (
-             <div className="space-y-3 pb-20">
+            <div className="space-y-3 pb-20">
               {filteredIndividuals.map((ind, index) => (
                 <button
                   key={`${ind.familyId}-${index}`}
@@ -354,7 +356,7 @@ function DirectoryContent() {
                   className="w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:border-teal-400 transition flex items-center gap-4 text-left"
                 >
                   <div className="w-12 h-12 shrink-0 bg-teal-50 text-teal-600 font-bold text-lg rounded-full flex items-center justify-center border border-teal-100 uppercase">
-                     {ind.name.charAt(0)}
+                    {ind.name.charAt(0)}
                   </div>
                   <div>
                     <h3 className="font-serif font-bold text-lg text-slate-900 truncate">{ind.name}</h3>
