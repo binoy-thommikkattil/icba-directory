@@ -94,7 +94,7 @@ export default function DirectoryCard({
     })
     : 'Unknown';
 
-  const isAdmin = user?.email?.toLowerCase().includes('admin');
+  const isAdmin = userProfile?.role === 'admin';
 
   // MERGE ADDRESS LOGIC (Safely combine manual text + map text)
   const fullCurrentAddress = [currentAddress, currentMapAddress].filter(Boolean).join(', ');

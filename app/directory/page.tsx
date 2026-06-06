@@ -37,14 +37,14 @@ function DirectoryContent() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const { user, loading: authLoading } = useAuth(); 
+  const { user, userProfile, loading: authLoading } = useAuth(); 
   const router = useRouter();
 
   // Retrieve Search Parameters natively
   const searchParams = useSearchParams();
   const filterTag = searchParams.get('tag');
 
-  const isAdmin = user?.email?.toLowerCase().includes('admin');
+  const isAdmin = userProfile?.role === 'admin';
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');

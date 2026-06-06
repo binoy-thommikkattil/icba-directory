@@ -56,7 +56,7 @@ export default function AddFamily() {
   const [loading, setLoading] = useState(false);
 
   // DETERMINE IF USER IS ADMIN TO BYPASS APPROVAL
-  const isAdmin = role === 'admin' || (user?.email?.toLowerCase().includes('admin') ?? false);
+  const isAdmin = userProfile?.role === 'admin';
 
   // ADDRESS & NEW MAP STATES (Separated Lat & Lng)
   const [currentAddress, setCurrentAddress] = useState('');

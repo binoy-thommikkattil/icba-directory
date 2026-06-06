@@ -58,7 +58,7 @@ function EditFamilyContent() {
   const params = useParams();
   const familyId = (params?.id as string) || searchParams.get('id');
 
-  const isAdmin = role === 'admin' || (user?.email?.toLowerCase().includes('admin') ?? false);
+  const isAdmin = userProfile?.role === 'admin';
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);

@@ -4,7 +4,6 @@ import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-// ADDED CLOCK ICON HERE
 import { ArrowLeft, Plus, Trash2, Edit2, X, Clock } from 'lucide-react'; 
 import { useRouter } from 'next/navigation';
 
@@ -19,13 +18,14 @@ const formatIST = (isoString: string) => {
 };
 
 export default function PrayerPage() {
-  // PULLED IN userProfile TO GET THEIR REAL NAME
   const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [prayerPoints, setPrayerPoints] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isAdmin = user?.email?.toLowerCase().includes('admin');
+  // THE FIX: Check the user's database role instead of their email address
+  const isAdmin = userProfile?.role === 'admin';
+  
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -40,7 +40,6 @@ export default function PrayerPage() {
     if (!user) return;
     const q = query(collection(db, 'prayer_points'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Sort so newest or most recently updated is at the top (optional but helpful!)
       const points = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       points.sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
       setPrayerPoints(points);
@@ -74,10 +73,8 @@ export default function PrayerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanSubpoints = subpoints.filter(s => s.trim() !== ''); 
-    // GRAB THE AUTHOR'S NAME
     const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
     
-    // ATTACH IT TO THE PAYLOAD
     const payload = { 
       title, 
       subpoints: cleanSubpoints, 
@@ -85,7 +82,7 @@ export default function PrayerPage() {
       authorUid: user?.uid || '',
       authorEmail: user?.email || '',
       updatedAt: new Date().toISOString(),
-      ...(editingId ? {} : { createdAt: new Date().toISOString() }) // Only set createdAt if new
+      ...(editingId ? {} : { createdAt: new Date().toISOString() }) 
     };
     
     try {
@@ -203,7 +200,6 @@ export default function PrayerPage() {
               </div>
             )}
 
-            {/* THE NEW FOOTER STAYS AT THE BOTTOM OF THE CARD */}
             <div className="flex items-center justify-between pt-4 mt-6 border-t border-slate-100 text-xs text-slate-400">
               <span className="font-medium text-slate-500">Updated by: {point.authorName || 'Unknown Member'}</span>
               <span className="flex items-center"><Clock size={12} className="mr-1" /> {formatIST(point.updatedAt || point.createdAt)}</span>

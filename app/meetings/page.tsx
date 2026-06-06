@@ -8,13 +8,13 @@ import { ArrowLeft, Video, MapPin, Plus, Trash2, Edit2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function MeetingsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const [meetings, setMeetings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Admin Form State
-  const isAdmin = user?.email?.toLowerCase().includes('admin');
+  const isAdmin = userProfile?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
