@@ -18,7 +18,11 @@ export const metadata: Metadata = {
   description: 'Immanuel Christian Believers Assembly (ICBA) is a Bible-based church in Bengaluru (Bangalore). Join our local assembly for Sunday worship, prayer, and bible study.',
   keywords: [
     'church bangalore', 
-    'church bengaluru', 
+    'church bengaluru',
+    'brethren assembly bangalore',
+    'brethren church bangalore',
+    'immanuel brethren assembly bangalore',
+    'immanuel brethren church bangalore',
     'icba', 
     'icba bangalore', 
     'icba bengaluru', 
