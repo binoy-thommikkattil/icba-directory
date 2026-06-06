@@ -14,8 +14,18 @@ export const viewport: Viewport = {
 
 // Updated Metadata to reflect the whole assembly
 export const metadata: Metadata = {
-  title: "ICBA",
-  description: "Immanuel Christian Believers Assembly",
+  title: 'ICBA | Immanuel Christian Believers Assembly Bangalore',
+  description: 'Immanuel Christian Believers Assembly (ICBA) is a Bible-based church in Bengaluru (Bangalore). Join our local assembly for Sunday worship, prayer, and bible study.',
+  keywords: [
+    'church bangalore', 
+    'church bengaluru', 
+    'icba', 
+    'icba bangalore', 
+    'icba bengaluru', 
+    'assembly bangalore', 
+    'assembly bengaluru',
+    'Immanuel Christian Believers Assembly'
+  ],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

@@ -9,7 +9,7 @@ export default function Footer() {
         
         {/* Identity */}
         <div className="space-y-4">
-          <h3 className="text-xl font-serif font-bold text-white">Immanuel Christian Believers Assembly</h3>
+          <h3 className="text-xl font-serif font-bold text-white">Immanuel Christian Believers Assembly, Bengaluru</h3>
           <p className="text-sm text-slate-400 leading-relaxed">
             We gather in the name of the Lord Jesus Christ and warmly welcome you to join us for worship, fellowship, and the study of God’s Word.
           </p>
