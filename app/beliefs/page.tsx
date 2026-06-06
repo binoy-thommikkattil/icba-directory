@@ -5,58 +5,45 @@ import { statementOfFaith, assemblyIntro } from '@/data/beliefsContent';
 
 export default function PublicBeliefsPage() {
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col w-full text-slate-900">
+    <div className="min-h-screen bg-slate-50 flex flex-col w-full text-slate-900">
       <PublicNavbar />
       
       <main className="flex-grow w-full">
         {/* Hero Section */}
-        <section className="pt-24 pb-16 px-6 max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-serif font-bold tracking-tight mb-8 text-slate-900">
-            Statement of Faith
-          </h1>
-          <p className="text-lg md:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto font-serif italic">
-            "{assemblyIntro}"
-          </p>
+        <section className="bg-white py-12 px-6 border-b border-slate-200 text-center">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="text-3xl md:text-5xl font-serif font-bold text-slate-900 mb-6">Statement of Faith</h1>
+            <p className="text-base md:text-lg text-slate-600 font-serif italic leading-relaxed">
+              "{assemblyIntro}"
+            </p>
+          </div>
         </section>
 
-        {/* The "Nested Box" Card Layout */}
-        <section className="pb-24 px-6 max-w-6xl mx-auto">
-          <div className="space-y-12">
+        {/* BELIEFS LIST (Sleek, scannable cards) */}
+        <section className="py-12 px-6 max-w-4xl mx-auto">
+          <div className="space-y-6">
             {statementOfFaith.map((belief, index) => (
-              
-              /* OUTER BOX (Your Green Box): The main card wrapping everything */
-              <div 
-                key={index} 
-                className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row group hover:shadow-md transition-shadow duration-300"
-              >
+              <div key={index} className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 md:gap-8 hover:shadow-md transition">
                 
-                {/* LEFT COLUMN (Your Red Box): A softly colored panel for the title and verses */}
-                <div className="w-full md:w-2/5 lg:w-1/3 bg-slate-50 p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-200 shrink-0">
-                  
-                  {/* MODIFIED: Heading Block to give it more attention */}
-                  <div>
-                    <h2 className="text-3xl md:text-4xl font-serif font-bold text-slate-900 tracking-tight mb-4">
-                      {belief.title}
-                    </h2>
-                    {/* Subtle accent line to draw the eye */}
-                    <div className="w-12 h-1.5 bg-teal-600 rounded-full mb-8"></div>
-                  </div>
-                  
-                  {/* INNER VERSES BOX (Your Purple Box): A rich, deep blue box to make the verses pop */}
-                  <div className="bg-sky-950 p-6 rounded-2xl shadow-inner mt-4">
-                    <span className="flex items-center text-xs font-bold text-sky-400 uppercase tracking-widest mb-3">
-                      <BookOpen size={16} className="mr-2" /> Scriptural Basis
-                    </span>
-                    <p className="text-sm font-medium text-sky-50 leading-relaxed italic">
-                      {belief.verses}
-                    </p>
-                  </div>
+                {/* Title */}
+                <div className="md:w-1/4 shrink-0">
+                  <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-900 border-b-2 border-teal-600 inline-block pb-1">
+                    {belief.title}
+                  </h2>
                 </div>
 
-                {/* RIGHT COLUMN: Crisp white background for effortless reading */}
-                <div className="w-full md:w-3/5 lg:w-2/3 p-8 md:p-10 flex items-center bg-white">
-                  <div className="text-lg text-slate-700 leading-loose whitespace-pre-wrap font-serif">
+                {/* Content & Inline Scriptures */}
+                <div className="md:w-3/4">
+                  <div className="text-sm md:text-base text-slate-700 leading-relaxed whitespace-pre-wrap font-serif mb-4">
                     {belief.text}
+                  </div>
+                  
+                  {/* Subtle, compact scriptural reference bar */}
+                  <div className="inline-flex items-start md:items-center bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">
+                    <BookOpen size={14} className="text-slate-500 mr-2 shrink-0 mt-0.5 md:mt-0" />
+                    <span className="text-xs font-medium text-slate-600 leading-tight">
+                      {belief.verses}
+                    </span>
                   </div>
                 </div>
 
