@@ -2,7 +2,7 @@
   "name": "Immanuel Christian Believers Assembly (ICBA)",
   "short_name": "ICBA",
   "description": "Church Website and Member Directory for ICBA Bengaluru",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0d9488",

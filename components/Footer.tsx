@@ -22,7 +22,7 @@ export default function Footer() {
             <li><Link href="/visit" className="hover:text-sky-400 transition">Visit Us & Timings</Link></li>
             <li><Link href="/beliefs" className="hover:text-sky-400 transition">Statement of Faith</Link></li>
             <li><Link href="/resources/sermons" className="hover:text-sky-400 transition">Sermons</Link></li>
-            <li><Link href="/directory" className="hover:text-sky-400 transition text-sky-500 font-medium">Member Directory</Link></li>
+            <li><Link href="/dashboard" className="hover:text-sky-400 transition text-sky-500 font-medium">Member Directory</Link></li>
           </ul>
         </div>
 
