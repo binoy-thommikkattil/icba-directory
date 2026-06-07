@@ -6,27 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { logActivity } from '@/lib/logger';
-
-const getBase64ImageFromUrl = async (imageUrl: string): Promise<{ dataUrl: string, width: number, height: number } | null> => {
-  return new Promise((resolve) => {
-    const img = new window.Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 1.0), width: img.width, height: img.height });
-      } else {
-        resolve(null);
-      }
-    };
-    img.onerror = () => resolve(null);
-    img.src = imageUrl;
-  });
-};
+import { getBase64ImageFromUrl } from '@/lib/imageUtils';
 
 export interface Individual {
   name: string;
