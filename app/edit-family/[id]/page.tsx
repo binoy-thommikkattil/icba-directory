@@ -13,20 +13,31 @@ import LocationPicker from '@/components/LocationPicker';
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
   image.src = imageSrc;
-  await new Promise((resolve) => (image.onload = resolve));
+  await new Promise((resolve, reject) => {
+    image.onload = resolve;
+    image.onerror = reject;
+  });
   const canvas = document.createElement('canvas');
-
-  // Allow a nice, high-resolution image for Firebase Storage
-  let scale = 1;
-  const MAX_WIDTH = 1200;
-  if (pixelCrop.width > MAX_WIDTH) scale = MAX_WIDTH / pixelCrop.width;
-
-  canvas.width = pixelCrop.width * scale;
-  canvas.height = pixelCrop.height * scale;
+  const TARGET_WIDTH = 800;
+  const TARGET_HEIGHT = 600;
+  canvas.width = TARGET_WIDTH;
+  canvas.height = TARGET_HEIGHT;
   const ctx = canvas.getContext('2d');
-  ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, canvas.width, canvas.height);
 
-  // Export at 90% quality for crispness
+  if (!ctx) throw new Error('Unable to create canvas context');
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    TARGET_WIDTH,
+    TARGET_HEIGHT
+  );
+
   return canvas.toDataURL('image/jpeg', 0.9);
 };
 
@@ -300,11 +311,39 @@ function EditFamilyContent() {
 
       {rawImage && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-          <div className="relative flex-1">
-            <Cropper image={rawImage} crop={crop} zoom={zoom} aspect={4 / 3} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
+          <div className="relative flex-1 flex items-center justify-center p-6">
+            <div className="relative w-full max-w-3xl aspect-[4/3] rounded-3xl overflow-hidden bg-slate-900">
+              <Cropper
+                image={rawImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={4 / 3}
+                cropShape="rect"
+                showGrid={false}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+                objectFit="horizontal-cover"
+              />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="w-full h-full border-2 border-white/90 rounded-3xl" />
+              </div>
+            </div>
           </div>
           <div className="p-6 bg-slate-900 pb-12">
-            <p className="text-white text-center text-sm mb-4">Pinch or scroll to zoom, drag to pan</p>
+            <p className="text-white text-center text-sm mb-4">Drag to position the photo, then use the slider to zoom.</p>
+            <div className="flex items-center gap-4 mb-4">
+              <label className="text-sm text-slate-200 min-w-[5rem]">Zoom</label>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-teal-500"
+              />
+            </div>
             <div className="flex gap-4">
               <button type="button" onClick={() => setRawImage(null)} className="flex-1 bg-slate-700 text-white py-3 rounded-xl font-bold">Cancel</button>
               <button type="button" onClick={saveCrop} className="flex-1 bg-teal-600 text-white py-3 rounded-xl font-bold flex justify-center items-center">
@@ -335,7 +374,7 @@ function EditFamilyContent() {
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Family Photo</h2>
           {photoUrl && (
             <div className="relative w-full h-48 rounded-xl overflow-hidden border border-slate-200 bg-black">
-              <img src={photoUrl} className="w-full h-full object-cover opacity-80" alt="Preview" />
+              <img src={photoUrl} className="w-full h-full aspect-[4/3] object-cover object-center opacity-80" alt="Preview" />
               <button type="button" onClick={() => setPhotoUrl('')} className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-lg shadow-md hover:bg-red-700 transition">
                 <X size={18} />
               </button>

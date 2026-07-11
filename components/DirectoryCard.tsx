@@ -304,7 +304,7 @@ export default function DirectoryCard({
                 }
               }}
               alt={`${familyName}`}
-              className="w-full h-auto object-contain group-hover:scale-105 transition duration-300"
+              className="w-full aspect-[4/3] object-cover object-center group-hover:scale-105 transition duration-300"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
               <span className="bg-black/60 text-white px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition text-sm font-medium backdrop-blur-sm">Click to expand</span>
