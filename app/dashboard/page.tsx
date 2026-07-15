@@ -3,10 +3,106 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, HandHeart, History, BookOpen, Music } from 'lucide-react';
+import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, History, BookOpen, Music } from 'lucide-react';
 // ADDED: where and onSnapshot for our access scanner
-import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, writeBatch, doc } from 'firebase/firestore';
+import { read, utils as xlsxUtils } from 'xlsx';
 import { db } from '@/lib/firebase';
+
+const normalizeHeader = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+const parseCsvText = (text: string) => {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentValue = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (char === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        currentValue += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      currentRow.push(currentValue);
+      currentValue = '';
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && text[i + 1] === '\n') {
+        i++;
+      }
+      currentRow.push(currentValue);
+      rows.push(currentRow);
+      currentRow = [];
+      currentValue = '';
+      continue;
+    }
+
+    currentValue += char;
+  }
+
+  if (currentValue !== '' || currentRow.length > 0) {
+    currentRow.push(currentValue);
+    rows.push(currentRow);
+  }
+
+  return rows.filter(row => row.some(cell => cell.trim() !== ''));
+};
+
+const parseBoolean = (value: string) => {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === 'yes' || normalized === 'true' || normalized === 'y' || normalized === '1';
+};
+
+const parseTags = (value: string) => {
+  return value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(Boolean);
+};
+
+const parseRowsFromFile = async (file: File, buffer: ArrayBuffer) => {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  if (extension === 'xlsx' || extension === 'xls') {
+    const workbook = read(buffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = xlsxUtils.sheet_to_json<string[]>(worksheet, { header: 1, defval: '' }) as string[][];
+    return rows.filter(row => row.some(cell => String(cell).trim() !== ''));
+  }
+
+  const text = new TextDecoder().decode(buffer);
+  return parseCsvText(text);
+};
+
+type ImportFamily = {
+  familyName: string;
+  status: string;
+  primaryMobile: string;
+  currentAddress: string;
+  nativeAddress: string;
+  homeAssembly: string;
+  commendedAssembly: string;
+  notes: string;
+  isPendingCreation: boolean;
+  members: Array<{
+    name: string;
+    mobile: string;
+    tags: string[];
+    bloodGroup: string;
+    willingToDonate: boolean;
+  }>;
+};
 
 export default function Dashboard() {
   // ADDED: userProfile so we can match their name
@@ -48,7 +144,7 @@ export default function Dashboard() {
         const family = doc.data();
         const isMyFamily = family.submittedBy === userProfile?.name || family.authorEmail === user?.email;
 
-        family.members?.forEach((member: any) => {
+        family.members?.forEach((member: { name?: string; tags?: string[] }) => {
           // Check if this specific member in the loop matches our logged-in user OR if they own the family
           const isMatch = member.name?.toLowerCase() === userProfile?.name?.toLowerCase() || isMyFamily;
 
@@ -80,62 +176,81 @@ export default function Dashboard() {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      const rows = text.split('\n').slice(1).filter(row => row.trim() !== '');
+      try {
+        const buffer = e.target?.result as ArrayBuffer;
+        const parsedRows = await parseRowsFromFile(file, buffer);
+        if (parsedRows.length < 2) {
+          throw new Error('The selected file does not contain any import rows.');
+        }
 
-      const familiesMap = new Map();
+        const headers = parsedRows[0].map(header => String(header).trim());
+        const headerMap = headers.reduce<Record<string, number>>((acc, header, index) => {
+          acc[normalizeHeader(header)] = index;
+          return acc;
+        }, {});
 
-      for (const row of rows) {
-        const [
-          familyName = '', primaryMobile = '', currentAddress = '', nativeAddress = '',
-          homeAssembly = '', commendedAssembly = '', notes = '',
-          memberName = '', bloodGroup = '', willingToDonate = '', tags = ''
-        ] = row.split(',').map(s => s?.trim() || '');
+        const getCellValue = (row: string[], key: string) => {
+          const index = headerMap[normalizeHeader(key)];
+          if (index === undefined) return '';
+          return String(row[index] || '').trim();
+        };
 
-        if (!primaryMobile) continue;
+        const families: ImportFamily[] = [];
 
-        if (!familiesMap.has(primaryMobile)) {
-          familiesMap.set(primaryMobile, {
-            familyName: familyName || '',
-            primaryMobile: primaryMobile || '',
-            currentAddress: currentAddress || '',
-            nativeAddress: nativeAddress || '',
-            homeAssembly: homeAssembly || '',
-            commendedAssembly: commendedAssembly || '',
-            notes: notes || '',
-            status: 'Active',
-            members: [],
-            submittedBy: "Bulk Admin Upload",
-            lastEdited: new Date().toISOString(),
-            isPendingCreation: false,
-            hasPendingEdit: false
+        for (const row of parsedRows.slice(1)) {
+          const familyName = getCellValue(row as string[], 'Family Name');
+          if (!familyName) continue;
+
+          let family = families.find(item => item.familyName === familyName);
+          if (!family) {
+            family = {
+              familyName,
+              status: getCellValue(row as string[], 'Status') || 'Active',
+              primaryMobile: getCellValue(row as string[], 'Mobile Number') || getCellValue(row as string[], 'Mobile') || '',
+              currentAddress: getCellValue(row as string[], 'Current Address') || '',
+              nativeAddress: getCellValue(row as string[], 'Native Address') || '',
+              homeAssembly: getCellValue(row as string[], 'Home Assembly') || '',
+              commendedAssembly: getCellValue(row as string[], 'Commended Assembly') || '',
+              notes: getCellValue(row as string[], 'Additional Info') || '',
+              isPendingCreation: false,
+              members: []
+            };
+            families.push(family);
+          }
+
+          const memberName = getCellValue(row as string[], 'Member Name');
+          if (!memberName) continue;
+
+          family.members.push({
+            name: memberName,
+            mobile: getCellValue(row as string[], 'Mobile Number') || getCellValue(row as string[], 'Mobile') || '',
+            tags: parseTags(getCellValue(row as string[], 'Tags')),
+            bloodGroup: getCellValue(row as string[], 'Blood Group') || '',
+            willingToDonate: parseBoolean(getCellValue(row as string[], 'Willing To Donate'))
           });
         }
 
-        if (memberName) {
-          familiesMap.get(primaryMobile).members.push({
-            name: memberName || '',
-            bloodGroup: bloodGroup || '',
-            willingToDonate: willingToDonate.toLowerCase() === 'yes' || willingToDonate.toLowerCase() === 'true',
-            tags: tags ? tags.split('-').map(t => t.trim()) : []
-          });
+        if (families.length === 0) {
+          throw new Error('No valid family rows could be grouped from the file.');
         }
-      }
 
-      let successCount = 0;
-      for (const [_, familyData] of familiesMap) {
-        try {
-          await addDoc(collection(db, 'members'), familyData);
-          successCount++;
-        } catch (err) {
-          console.error(`Failed to upload family: ${familyData.familyName}`, err);
-        }
-      }
+        const batch = writeBatch(db);
+        families.forEach(family => {
+          const docRef = doc(collection(db, 'members'));
+          batch.set(docRef, family);
+        });
 
-      event.target.value = '';
-      alert(`Success! Grouped and uploaded ${successCount} distinct families.`);
+        await batch.commit();
+
+        event.target.value = '';
+        alert(`Success! Grouped and uploaded ${families.length} distinct families.`);
+      } catch (error) {
+        console.error('Bulk upload failed:', error);
+        alert(error instanceof Error ? error.message : 'Bulk upload failed.');
+      }
     };
-    reader.readAsText(file);
+
+    reader.readAsArrayBuffer(file);
   };
 
   return (
@@ -231,8 +346,8 @@ export default function Dashboard() {
               <div><h2 className="font-bold text-white text-lg">Pending Approvals</h2><p className="text-sm text-slate-400">Review users, new families & edits</p></div>
             </Link>
             <label className="bg-slate-800 text-white p-4 rounded-2xl shadow-md font-bold hover:bg-slate-900 transition flex items-center justify-center w-full mb-4 cursor-pointer">
-              <input type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
-              📊 Bulk Upload Members (CSV)
+              <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+              📊 Bulk Upload Members (CSV/Excel)
             </label>
             <Link href="/manage-users" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
               <div className="w-12 h-12 bg-slate-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-50 transition"><UsersIcon size={24} /></div>
