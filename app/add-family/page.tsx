@@ -10,6 +10,8 @@ import Cropper from 'react-easy-crop';
 import { useAuth } from '@/lib/AuthContext';
 import LocationPicker from '@/components/LocationPicker';
 
+const MEMBER_TAG_OPTIONS = ['Bachelor Meeting', 'Youth Meeting', 'Brothers Meeting', 'Sisters Meeting', 'Sunday School', 'Choir'];
+
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
   image.src = imageSrc;
@@ -85,7 +87,7 @@ export default function AddFamily() {
   const [commendedAssembly, setCommendedAssembly] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
-  const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: [] as string[] }]);
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export default function AddFamily() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  const handleAddMember = () => setMembers([...members, { name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: '' }]);
+  const handleAddMember = () => setMembers([...members, { name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: [] as string[] }]);
   const handleMemberChange = (index: number, field: string, value: any) => {
     const newMembers = [...members] as any;
     newMembers[index][field] = value;
@@ -177,7 +179,7 @@ export default function AddFamily() {
       status, notes,
       members: members.filter(m => m.name.trim() !== '').map(m => ({
         ...m,
-        tags: typeof m.tags === 'string' ? m.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []
+        tags: Array.isArray(m.tags) ? m.tags : []
       })),
       lastEdited: new Date().toISOString(),
       submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User',
@@ -314,12 +316,12 @@ export default function AddFamily() {
                 )}
 
                 <div className="flex-1 space-y-4">
-                  <div className="flex gap-3">
-                    <div className="w-1/2">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="flex-1">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
                       <input required placeholder="e.g. John Mark" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
                     </div>
-                    <div className="w-1/2">
+                    <div className="flex-1">
                       <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
                         {index === 0 ? 'Primary Mobile *' : 'Personal Mobile'}
                       </label>
@@ -332,11 +334,28 @@ export default function AddFamily() {
                         onChange={e => handleMemberChange(index, 'mobile', e.target.value)}
                       />
                     </div>
+                    {index > 0 && (
+                      <button type="button" onClick={() => removeMember(index)} className="shrink-0 self-center p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles (Comma Separated)</label>
-                    <input placeholder="e.g. Sunday School Student, Bachelor" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600" value={member.tags || ''} onChange={e => handleMemberChange(index, 'tags', e.target.value)} />
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles</label>
+                    <select
+                      multiple
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 min-h-[7rem]"
+                      value={Array.isArray(member.tags) ? member.tags : []}
+                      onChange={e => {
+                        const selectedTags = Array.from(e.target.selectedOptions, option => option.value);
+                        handleMemberChange(index, 'tags', selectedTags);
+                      }}
+                    >
+                      {MEMBER_TAG_OPTIONS.map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100">
@@ -356,11 +375,12 @@ export default function AddFamily() {
                   </div>
                 </div>
 
-                {index > 0 && (
-                  <button type="button" onClick={() => removeMember(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg mt-5"><Trash2 size={18} /></button>
-                )}
               </div>
             ))}
+            <button type="button" onClick={handleAddMember} className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-teal-600 bg-white px-4 py-3 text-sm font-semibold text-teal-600 transition hover:bg-teal-50">
+              <Plus size={16} className="shrink-0" />
+              <span>Add Another Person</span>
+            </button>
           </div>
         </div>
 
