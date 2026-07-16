@@ -91,6 +91,7 @@ function EditFamilyContent() {
   const [commendedAssembly, setCommendedAssembly] = useState('');
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
+  const [showNativeAddress, setShowNativeAddress] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
 
   const [photoUrl, setPhotoUrl] = useState('');
@@ -129,6 +130,7 @@ function EditFamilyContent() {
           setCommendedAssembly(data.commendedAssembly || '');
           setStatus(data.status || 'Active');
           setNotes(data.notes || '');
+          setShowNativeAddress(Boolean(data.nativeAddress || data.nativeMapAddress || data.nativeLat || data.nativeLng));
 
           setPhotoUrl(data.photoUrl || data.photoBase64 || '');
           setExistingBase64(data.photoBase64 || '');
@@ -481,7 +483,7 @@ function EditFamilyContent() {
           </div>
         </div>
 
-        <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
           <h2 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Contact & Location</h2>
           
           <LocationPicker
@@ -500,23 +502,45 @@ function EditFamilyContent() {
             }}
           />
 
-          <LocationPicker
-            label="Native Address & Location"
-            type="Native"
-            isAdmin={isAdmin}
-            address={nativeAddress}
-            mapAddress={nativeMapAddress}
-            lat={nativeLat}
-            lng={nativeLng}
-            onChange={(data) => {
-              setNativeAddress(data.address);
-              setNativeMapAddress(data.mapAddress);
-              setNativeLat(data.lat);
-              setNativeLng(data.lng);
-            }}
-          />
+          {!showNativeAddress ? (
+            <button
+              type="button"
+              onClick={() => setShowNativeAddress(true)}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800 transition"
+            >
+              <span className="text-base leading-none">+</span>
+              Add Native Address
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowNativeAddress(false)}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition"
+              >
+                <span className="text-base leading-none">−</span>
+                Hide Native Address
+              </button>
 
-          <div className="space-y-4 pt-4">
+              <LocationPicker
+                label="Native Address & Location"
+                type="Native"
+                isAdmin={isAdmin}
+                address={nativeAddress}
+                mapAddress={nativeMapAddress}
+                lat={nativeLat}
+                lng={nativeLng}
+                onChange={(data) => {
+                  setNativeAddress(data.address);
+                  setNativeMapAddress(data.mapAddress);
+                  setNativeLat(data.lat);
+                  setNativeLng(data.lng);
+                }}
+              />
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-2 pt-2">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Home Assembly</label>
               <input type="text" className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={homeAssembly} onChange={e => setHomeAssembly(e.target.value)} />
@@ -529,7 +553,7 @@ function EditFamilyContent() {
 
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1">Additional Information</label>
-            <textarea rows={2} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value={notes} onChange={e => setNotes(e.target.value)} />
+            <textarea rows={1} className="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-none" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
         </div>
 
