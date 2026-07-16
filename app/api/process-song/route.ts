@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     
     The JSON must have exactly these 9 string keys:
     
-    "title": The title of the song. MUST ALWAYS be in English. If the song is in Malayalam/Hindi/Kannada/Tamil/Telugu/Gujarati/etc., use an English transliteration or a literal English title that preserves the song's identity. Do not return the original script as the title. If the user provided a title, use it only if it is already English or convert it to an English transliterated/literal title. If the user provided NONE, auto-detect the known title of the hymn. If unknown, use the first 3-5 words of the lyrics as an English title (transliterated if needed).
+    "title": For the title, you MUST output the phonetic transliteration of the original language using the English alphabet (e.g., Manglish or Hinglish). Do NOT translate the meaning of the words into English. Example: If the original title is "ആരാധിക്കും", you must output "Aaradhikkum", NOT "We will worship".
     
     "language": The language of the song. If the user provided "Auto-Detect", identify the exact language (e.g., Malayalam, Hindi, Kannada, Telugu, Gujarati, Tamil, English).
     
