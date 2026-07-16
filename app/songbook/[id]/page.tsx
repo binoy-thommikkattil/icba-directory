@@ -142,9 +142,9 @@ export default function ViewSongPage() {
                 </button>
               )}
 
-              {song.imageUrl && (
+              {(Array.isArray(song.imageUrls) ? song.imageUrls.length > 0 : Boolean(song.imageUrl)) && (
                 <button onClick={() => setActiveTab('image')} className={`flex items-center justify-center px-4 md:px-6 py-2.5 text-sm font-bold rounded-xl transition ${activeTab === 'image' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <ImageIcon size={16} className="mr-2"/> Original Photo
+                  <ImageIcon size={16} className="mr-2"/> Original Photos
                 </button>
               )}
             </div>
@@ -231,9 +231,28 @@ export default function ViewSongPage() {
             )}
 
             {/* IMAGE TAB */}
-            {activeTab === 'image' && song.imageUrl && (
+            {activeTab === 'image' && (
               <div className="animate-in fade-in slide-in-from-bottom-2">
-                <img src={song.imageUrl} alt={`Original sheet music for ${song.title}`} className="w-full h-auto rounded-xl border border-slate-200 shadow-sm" />
+                {(() => {
+                  const imageList = Array.isArray(song.imageUrls)
+                    ? song.imageUrls.filter(Boolean)
+                    : (song.imageUrl ? [song.imageUrl] : []);
+
+                  if (imageList.length === 0) return null;
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {imageList.map((imageUrl: string, index: number) => (
+                        <img
+                          key={`${imageUrl}-${index}`}
+                          src={imageUrl}
+                          alt={`Original sheet music ${index + 1} for ${song.title}`}
+                          className="w-full h-auto rounded-2xl border border-slate-200 shadow-sm object-contain bg-slate-50"
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

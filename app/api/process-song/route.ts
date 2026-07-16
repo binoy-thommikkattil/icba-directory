@@ -13,15 +13,31 @@ export async function POST(req: Request) {
 
     let parts: any[] = [];
 
+    const imageUrls = Array.isArray(payload) ? payload.filter(Boolean) : [payload].filter(Boolean);
+
     // 1. IF IT IS AN IMAGE
     if (inputMethod === 'image') {
-      const imageResp = await fetch(payload);
-      const arrayBuffer = await imageResp.arrayBuffer();
-      const base64Image = Buffer.from(arrayBuffer).toString('base64');
-      const mimeType = imageResp.headers.get('content-type') || 'image/jpeg';
+      if (imageUrls.length === 0) {
+        return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+      }
 
-      parts.push({ inline_data: { mime_type: mimeType, data: base64Image } });
-      parts.push({ text: `Extract the lyrics from this image.` });
+      for (const imageUrl of imageUrls) {
+        const imageResp = await fetch(imageUrl);
+        if (!imageResp.ok) {
+          return NextResponse.json({ error: `Unable to fetch image: ${imageUrl}` }, { status: 400 });
+        }
+        const arrayBuffer = await imageResp.arrayBuffer();
+        const base64Image = Buffer.from(arrayBuffer).toString('base64');
+        const mimeType = imageResp.headers.get('content-type') || 'image/jpeg';
+
+        parts.push({ inline_data: { mime_type: mimeType, data: base64Image } });
+      }
+
+      parts.push({
+        text: imageUrls.length > 1
+          ? `Extract the lyrics from these images. If multiple pages or photos were provided, combine them into one coherent extraction and preserve the song structure.`
+          : `Extract the lyrics from this image.`
+      });
     }
     // 2. IF IT IS TEXT
     else {
@@ -36,11 +52,11 @@ export async function POST(req: Request) {
     
     The JSON must have exactly these 9 string keys:
     
-    "title": The title of the song. If the user provided a title, use it. If the user provided NONE, auto-detect the known title of the hymn. If unknown, use the first 3-5 words of the lyrics as the title in English.
+    "title": The title of the song. MUST ALWAYS be in English. If the song is in Malayalam/Hindi/Kannada/Tamil/Telugu/Gujarati/etc., use an English transliteration or a literal English title that preserves the song's identity. Do not return the original script as the title. If the user provided a title, use it only if it is already English or convert it to an English transliterated/literal title. If the user provided NONE, auto-detect the known title of the hymn. If unknown, use the first 3-5 words of the lyrics as an English title (transliterated if needed).
     
     "language": The language of the song. If the user provided "Auto-Detect", identify the exact language (e.g., Malayalam, Hindi, Kannada, Telugu, Gujarati, Tamil, English).
     
-    "originalAuthor": The composer or writer.If the user provided an author, use it.If no author is provided, only return an author if you are highly confident (≥90%) based on well-documented sources.Do NOT guess based on style, language, or theme.If uncertain, return an empty string "".If multiple or unclear attributions exist, return "".
+    "originalAuthor": The composer or writer. If the user provided an author, use it. If no author is provided, only return an author if you are 100% certain based on explicit evidence from the provided text or image. DO NOT guess or infer from style, language, or theme. If the writer is not explicitly written in the provided text/image, or if you are not 100% certain of the factual attribution, return the exact string "Unknown". Do not return an empty string.
 
     "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
     
@@ -81,7 +97,14 @@ export async function POST(req: Request) {
     const aiText = data.candidates[0].content.parts[0].text;
     const parsedResult = JSON.parse(aiText);
 
-    return NextResponse.json(parsedResult);
+    const normalizedResult = {
+      ...parsedResult,
+      title: parsedResult.title?.trim() || 'Untitled Song',
+      originalAuthor: parsedResult.originalAuthor?.trim() || 'Unknown',
+      language: parsedResult.language?.trim() || 'Unknown',
+    };
+
+    return NextResponse.json(normalizedResult);
 
   } catch (error) {
     console.error("Internal API Route Error:", error);

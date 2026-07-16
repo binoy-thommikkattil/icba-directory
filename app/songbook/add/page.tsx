@@ -24,8 +24,8 @@ export default function AddSongPage() {
     // Input Method State (Moved to top of UI)
     const [inputMethod, setInputMethod] = useState<'text' | 'image'>('text');
     const [lyrics, setLyrics] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [useOCR, setUseOCR] = useState(true);
 
     useEffect(() => {
@@ -33,37 +33,44 @@ export default function AddSongPage() {
     }, [user, authLoading, router]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => setImagePreview(reader.result as string);
-            reader.readAsDataURL(file);
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) {
+            setImageFiles([]);
+            setImagePreviews([]);
+            return;
         }
+
+        setImageFiles(files);
+        Promise.all(files.map(file => new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+        }))).then((previews) => setImagePreviews(previews));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (inputMethod === 'text' && !lyrics.trim()) return alert("Please enter the song lyrics.");
-        if (inputMethod === 'image' && !imageFile) return alert("Please upload an image.");
+        if (inputMethod === 'image' && imageFiles.length === 0) return alert("Please upload at least one image.");
 
         setIsSubmitting(true);
         setSubmissionStatus('Initializing AI...');
 
         try {
             const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
-            let imageUrl = '';
+            const imageUrls: string[] = [];
             
             // These will be overridden by AI if successful
-            let finalTitle = title;
+            let finalTitle = title.trim();
             let finalLanguage = language;
-            let finalAuthor = originalAuthor;
+            let finalAuthor = originalAuthor.trim();
             let extractedLyrics = lyrics;
             let finalTransliterationEng = '';
-            let finalTransliterationMal = ''; // New field for Malayalam Phonetics
+            let finalTransliterationMal = '';
             let finalMeaningEng = '';
             let finalMeaningMal = '';
             let finalStory = story;
+            let aiCallSucceeded = false;
 
             setSubmissionStatus('Assigning Song Number...');
             const q = query(collection(db, 'songs'), orderBy('songNumber', 'desc'), limit(1));
@@ -73,11 +80,14 @@ export default function AddSongPage() {
                 nextSongNumber = (snapshot.docs[0].data().songNumber || 0) + 1;
             }
 
-            if (inputMethod === 'image' && imageFile) {
-                setSubmissionStatus('Uploading high-quality image...');
-                const imageRef = ref(storage, `song_images/${Date.now()}_${imageFile.name}`);
-                const uploadSnapshot = await uploadBytes(imageRef, imageFile);
-                imageUrl = await getDownloadURL(uploadSnapshot.ref);
+            if (inputMethod === 'image' && imageFiles.length > 0) {
+                setSubmissionStatus('Uploading selected images...');
+                for (const file of imageFiles) {
+                    const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                    const imageRef = ref(storage, `song_images/${uniqueSuffix}_${file.name}`);
+                    const uploadSnapshot = await uploadBytes(imageRef, file);
+                    imageUrls.push(await getDownloadURL(uploadSnapshot.ref));
+                }
 
                 if (useOCR) {
                     setSubmissionStatus('AI is extracting text, finding metadata, and generating phonetics... (10-15 seconds)');
@@ -85,17 +95,18 @@ export default function AddSongPage() {
                         const apiRes = await fetch('/api/process-song', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ inputMethod: 'image', payload: imageUrl, language, title, originalAuthor })
+                            body: JSON.stringify({ inputMethod: 'image', payload: imageUrls, language, title, originalAuthor })
                         });
 
                         if (apiRes.ok) {
                             const aiData = await apiRes.json();
-                            finalTitle = aiData.title || finalTitle || "Untitled Song";
+                            aiCallSucceeded = true;
+                            finalTitle = aiData.title?.trim() || finalTitle || "Untitled Song";
                             finalLanguage = aiData.language || finalLanguage;
-                            finalAuthor = aiData.originalAuthor || finalAuthor;
+                            finalAuthor = aiData.originalAuthor?.trim() || finalAuthor || 'Unknown';
                             extractedLyrics = aiData.lyrics || '';
                             finalTransliterationEng = aiData.transliterationEnglish || '';
-                            finalTransliterationMal = aiData.transliterationMalayalam || ''; // Catching Malayalam phonetics
+                            finalTransliterationMal = aiData.transliterationMalayalam || '';
                             finalMeaningEng = aiData.meaningEnglish || '';
                             finalMeaningMal = aiData.meaningMalayalam || '';
                             finalStory = aiData.story || finalStory;
@@ -116,12 +127,13 @@ export default function AddSongPage() {
 
                     if (apiRes.ok) {
                         const aiData = await apiRes.json();
-                        finalTitle = aiData.title || finalTitle;
+                        aiCallSucceeded = true;
+                        finalTitle = aiData.title?.trim() || finalTitle;
                         finalLanguage = aiData.language || finalLanguage;
-                        finalAuthor = aiData.originalAuthor || finalAuthor;
+                        finalAuthor = aiData.originalAuthor?.trim() || finalAuthor || 'Unknown';
                         extractedLyrics = aiData.lyrics || lyrics;
                         finalTransliterationEng = aiData.transliterationEnglish || '';
-                        finalTransliterationMal = aiData.transliterationMalayalam || ''; // Catching Malayalam phonetics
+                        finalTransliterationMal = aiData.transliterationMalayalam || '';
                         finalMeaningEng = aiData.meaningEnglish || '';
                         finalMeaningMal = aiData.meaningMalayalam || '';
                         finalStory = aiData.story || finalStory;
@@ -131,9 +143,15 @@ export default function AddSongPage() {
                 }
             }
 
-            // Fallback if AI couldn't figure out the title
+            // Fallback for titles when the AI call never returns usable data
             if (!finalTitle || finalTitle.trim() === '') {
-                finalTitle = extractedLyrics.split('\n')[0].substring(0, 30) + '...';
+                if (aiCallSucceeded) {
+                    finalTitle = 'Untitled Song';
+                } else if (inputMethod === 'text') {
+                    finalTitle = extractedLyrics.split('\n')[0].substring(0, 30) + '...';
+                } else {
+                    finalTitle = 'Untitled Song';
+                }
             }
             if (finalLanguage === 'Auto-Detect') finalLanguage = 'Unknown';
 
@@ -143,14 +161,15 @@ export default function AddSongPage() {
                 title: finalTitle,
                 songNumber: nextSongNumber,
                 language: finalLanguage,
-                originalAuthor: finalAuthor,
+                originalAuthor: finalAuthor || 'Unknown',
                 lyrics: extractedLyrics,
                 transliterationEnglish: finalTransliterationEng,
-                transliterationMalayalam: finalTransliterationMal, // NEW FIELD
+                transliterationMalayalam: finalTransliterationMal,
                 meaningEnglish: finalMeaningEng,
                 meaningMalayalam: finalMeaningMal,
                 story: finalStory,
-                imageUrl,
+                imageUrls,
+                imageUrl: imageUrls[0] || '',
                 authorName,
                 authorUid: user?.uid || '',
                 authorEmail: user?.email || '',
@@ -207,16 +226,22 @@ export default function AddSongPage() {
                         {inputMethod === 'image' && (
                             <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
                                 <div className="flex items-center justify-center w-full">
-                                    <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition overflow-hidden relative">
-                                        {imagePreview ? (
-                                            <img src={imagePreview} alt="Preview" className="w-full h-full object-contain p-2" />
+                                    <label className="flex flex-col items-center justify-center w-full min-h-48 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition overflow-hidden relative px-3 py-3">
+                                        {imagePreviews.length > 0 ? (
+                                            <div className="grid grid-cols-2 gap-2 w-full">
+                                                {imagePreviews.map((preview, index) => (
+                                                    <div key={`${preview}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-32 object-contain p-2" />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         ) : (
                                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                 <ImageIcon className="w-10 h-10 text-slate-400 mb-3" />
-                                                <p className="mb-2 text-sm text-slate-500 font-bold">Click to upload photo of songbook</p>
+                                                <p className="mb-2 text-sm text-slate-500 font-bold">Click to upload one or more photos of the songbook</p>
                                             </div>
                                         )}
-                                        <input required={inputMethod === 'image'} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                                        <input required={inputMethod === 'image'} type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
                                     </label>
                                 </div>
                                 <label className="flex items-start p-4 bg-sky-50 border border-sky-100 rounded-xl cursor-pointer hover:bg-sky-100 transition group">

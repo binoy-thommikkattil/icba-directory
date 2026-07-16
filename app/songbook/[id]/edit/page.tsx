@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Lock, Image as ImageIcon, X } from 'lucide-react';
 
 export default function EditSongPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -27,6 +28,9 @@ export default function EditSongPage() {
   const [meaningEng, setMeaningEng] = useState('');
   const [meaningMal, setMeaningMal] = useState('');
   const [story, setStory] = useState('');
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -50,6 +54,10 @@ export default function EditSongPage() {
           setMeaningEng(data.meaningEnglish || '');
           setMeaningMal(data.meaningMalayalam || '');
           setStory(data.story || '');
+          const parsedImages = Array.isArray(data.imageUrls)
+            ? data.imageUrls.filter(Boolean)
+            : (data.imageUrl ? [data.imageUrl] : []);
+          setExistingImageUrls(parsedImages);
         } else { router.push('/songbook'); }
       } catch (error) { console.error("Error fetching song:", error); } 
       finally { setIsLoading(false); }
@@ -57,11 +65,43 @@ export default function EditSongPage() {
     fetchSong();
   }, [params.id]);
 
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      setImageFiles([]);
+      setImagePreviews([]);
+      return;
+    }
+
+    setImageFiles(files);
+    Promise.all(files.map(file => new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    }))).then((previews) => setImagePreviews(previews));
+  };
+
+  const removeExistingImage = (indexToRemove: number) => {
+    setExistingImageUrls((current) => current.filter((_, index) => index !== indexToRemove));
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
       const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
+      let nextImageUrls = existingImageUrls;
+
+      if (imageFiles.length > 0) {
+        nextImageUrls = [];
+        for (const file of imageFiles) {
+          const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const imageRef = ref(storage, `song_images/${uniqueSuffix}_${file.name}`);
+          const uploadSnapshot = await uploadBytes(imageRef, file);
+          nextImageUrls.push(await getDownloadURL(uploadSnapshot.ref));
+        }
+      }
+
       await updateDoc(doc(db, 'songs', params.id as string), {
         title, 
         language, 
@@ -72,11 +112,14 @@ export default function EditSongPage() {
         meaningEnglish: meaningEng, 
         meaningMalayalam: meaningMal, 
         story, 
+        imageUrls: nextImageUrls,
+        imageUrl: nextImageUrls[0] || '',
         authorName,
         updatedAt: new Date().toISOString()
       });
       router.push(`/songbook/${params.id}`);
     } catch (error) { 
+        console.error('Failed to update song.', error);
         alert("Failed to update song."); 
         setIsSaving(false); 
     }
@@ -156,6 +199,45 @@ export default function EditSongPage() {
           <div className="pt-4 border-t border-slate-100">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Story / History</label>
             <textarea rows={3} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500 transition" value={story} onChange={e => setStory(e.target.value)} />
+          </div>
+
+          <div className="pt-4 border-t border-slate-100">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Attached Images</label>
+            {existingImageUrls.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                {existingImageUrls.map((imageUrl, index) => (
+                  <div key={`${imageUrl}-${index}`} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                    <img src={imageUrl} alt={`Existing attachment ${index + 1}`} className="w-full h-28 object-contain p-2" />
+                    <button
+                      type="button"
+                      onClick={() => removeExistingImage(index)}
+                      className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/80 text-white shadow-sm transition hover:bg-red-600"
+                      aria-label={`Remove image ${index + 1}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className="flex flex-col items-center justify-center w-full min-h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition px-3 py-3">
+              {imagePreviews.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={`${preview}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <img src={preview} alt={`New preview ${index + 1}`} className="w-full h-24 object-contain p-2" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-3 text-center">
+                  <ImageIcon className="w-8 h-8 text-slate-400 mb-2" />
+                  <span className="text-sm font-bold text-slate-500">Choose new images to replace the current set</span>
+                  <span className="text-xs text-slate-400 mt-1">Leave empty to keep the existing photos intact.</span>
+                </div>
+              )}
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+            </label>
           </div>
 
           <button disabled={isSaving} type="submit" className="w-full bg-sky-600 text-white font-bold p-4 rounded-xl hover:bg-sky-700 transition shadow-sm flex items-center justify-center disabled:opacity-70">
