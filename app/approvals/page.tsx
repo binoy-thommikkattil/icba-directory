@@ -13,8 +13,67 @@ import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2,
 const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
   if (!original || !draft) return null;
 
+  const normalizeForComparison = (value: any) => {
+    if (Array.isArray(value)) {
+      return JSON.stringify(
+        value
+          .filter((item) => item !== null && item !== undefined && item !== '')
+          .map((item) => String(item).trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b))
+      );
+    }
+
+    if (value && typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+
+    return value == null ? '' : String(value);
+  };
+
+  const hasValueChanged = (oldValue: any, newValue: any) => normalizeForComparison(oldValue) !== normalizeForComparison(newValue);
+
+  const getTagDiff = (oldTags: any, newTags: any) => {
+    const normalizeTagList = (value: any) =>
+      (Array.isArray(value) ? value : [])
+        .filter((tag) => tag !== null && tag !== undefined && tag !== '')
+        .map((tag) => String(tag).trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+    const oldList = normalizeTagList(oldTags);
+    const newList = normalizeTagList(newTags);
+
+    return {
+      oldList,
+      newList,
+      removed: oldList.filter((tag) => !newList.includes(tag)),
+      added: newList.filter((tag) => !oldList.includes(tag)),
+      common: oldList.filter((tag) => newList.includes(tag)),
+    };
+  };
+
+  const formatDisplayValue = (value: any) => {
+    if (value === null || value === undefined || value === '') return '(Blank)';
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    return String(value);
+  };
+
+  const renderValueRow = (oldValue: any, newValue: any) => (
+    <div className="flex items-start gap-2 text-sm">
+      <div className="flex-1 rounded-lg border border-red-100 bg-red-50 px-2.5 py-2 text-red-700 break-words">
+        {formatDisplayValue(oldValue)}
+      </div>
+      <ArrowRight size={16} className="mt-2 text-slate-300 flex-shrink-0" />
+      <div className="flex-1 rounded-lg border border-green-200 bg-green-50 px-2.5 py-2 text-green-800 font-semibold break-words">
+        {formatDisplayValue(newValue)}
+      </div>
+    </div>
+  );
+
   const getDifferences = () => {
-    const diffs = [];
+    const diffs: any[] = [];
 
     // 1. Check standard text fields (ADDED MAP ADDRESSES)
     const fieldsToTrack = [
@@ -31,12 +90,12 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
     ];
 
     fieldsToTrack.forEach(({ key, label }) => {
-      if (original[key] !== draft[key]) {
+      if (hasValueChanged(original[key], draft[key])) {
         diffs.push({ label, oldVal: original[key], newVal: draft[key] });
       }
     });
 
-    // 2. NEW: Check exact GPS Coordinate changes
+    // 2. Check exact GPS Coordinate changes
     const oldCurrentLat = original.currentLat || original.currentCoordinates?.lat;
     const oldCurrentLng = original.currentLng || original.currentCoordinates?.lng;
     const newCurrentLat = draft.currentLat || draft.currentCoordinates?.lat;
@@ -64,7 +123,7 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
     }
 
     // 3. Check Photo changes
-    if (original.photoUrl !== draft.photoUrl) {
+    if (hasValueChanged(original.photoUrl, draft.photoUrl)) {
       diffs.push({
         label: 'Family Photo',
         oldVal: original.photoUrl ? 'Has Existing Photo' : '(No Photo)',
@@ -72,17 +131,67 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
       });
     }
 
-    // 4. Check Members Array
-    const oldMembersStr = JSON.stringify(original.members || []);
-    const newMembersStr = JSON.stringify(draft.members || []);
+    // 4. Check Members Array and surface only changed member cards
+    const originalMembers = Array.isArray(original.members) ? original.members : [];
+    const draftMembers = Array.isArray(draft.members) ? draft.members : [];
 
-    if (oldMembersStr !== newMembersStr) {
-      diffs.push({
-        label: 'Family Members',
-        isComplex: true,
-        oldVal: original.members || [],
-        newVal: draft.members || []
-      });
+    if (hasValueChanged(originalMembers, draftMembers)) {
+      const memberDiffs: any[] = [];
+      const maxLength = Math.max(originalMembers.length, draftMembers.length);
+
+      for (let index = 0; index < maxLength; index += 1) {
+        const oldMember = originalMembers[index];
+        const newMember = draftMembers[index];
+        const fieldDiffs: any[] = [];
+
+        const trackedFields = [
+          { key: 'name', label: 'Name' },
+          { key: 'mobile', label: 'Mobile' },
+          { key: 'bloodGroup', label: 'Blood Group' },
+          { key: 'willingToDonate', label: 'Willing to Donate' },
+          { key: 'relationship', label: 'Relationship' },
+          { key: 'tags', label: 'Tags / Roles', isArray: true },
+        ];
+
+        trackedFields.forEach(({ key, label, isArray }) => {
+          const oldValue = oldMember?.[key];
+          const newValue = newMember?.[key];
+
+          if (isArray) {
+            const tagDiff = getTagDiff(oldValue, newValue);
+            if (tagDiff.added.length > 0 || tagDiff.removed.length > 0) {
+              fieldDiffs.push({
+                label,
+                kind: 'array',
+                oldVal: tagDiff.removed,
+                newVal: tagDiff.added,
+                common: tagDiff.common,
+              });
+            }
+            return;
+          }
+
+          if (hasValueChanged(oldValue, newValue)) {
+            fieldDiffs.push({ label, kind: 'simple', oldVal: oldValue, newVal: newValue });
+          }
+        });
+
+        if (fieldDiffs.length > 0) {
+          memberDiffs.push({
+            index,
+            name: newMember?.name || oldMember?.name || `Member ${index + 1}`,
+            changes: fieldDiffs,
+          });
+        }
+      }
+
+      if (memberDiffs.length > 0) {
+        diffs.push({
+          label: 'Family Members',
+          isComplex: true,
+          members: memberDiffs,
+        });
+      }
     }
 
     return diffs;
@@ -102,34 +211,53 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">{change.label}</p>
 
           {change.isComplex ? (
-            <div className="space-y-2">
-              <div className="bg-red-50 p-2.5 rounded-lg border border-red-100">
-                <span className="text-[10px] font-bold text-red-800 uppercase tracking-wider block mb-1.5 opacity-80">Previous Members:</span>
-                <ul className="text-sm text-red-700 list-disc list-inside">
-                  {change.oldVal.map((m: any, i: number) => (
-                    <li key={i}>{m.name} {m.mobile ? `(${m.mobile})` : ''} • {m.bloodGroup || 'No BG'}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="bg-green-50 p-2.5 rounded-lg border border-green-200 shadow-sm">
-                <span className="text-[10px] font-bold text-green-800 uppercase tracking-wider block mb-1.5 opacity-80">Proposed Members:</span>
-                <ul className="text-sm text-green-800 list-disc list-inside font-medium">
-                  {change.newVal.map((m: any, i: number) => (
-                    <li key={i}>{m.name} {m.mobile ? `(${m.mobile})` : ''} • {m.bloodGroup || 'No BG'}</li>
-                  ))}
-                </ul>
-              </div>
+            <div className="space-y-3">
+              {change.members.map((member: any, memberIdx: number) => (
+                <div key={`${member.name}-${memberIdx}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-800">{member.name}</p>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 border border-slate-200">
+                      Member {member.index + 1}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {member.changes.map((fieldChange: any) => (
+                      <div key={fieldChange.label} className="rounded-lg border border-slate-200 bg-white p-2.5">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{fieldChange.label}</p>
+                        {fieldChange.kind === 'array' ? (
+                          <div className="grid gap-2 md:grid-cols-2">
+                            <div className="rounded-lg border border-red-100 bg-red-50 p-2.5">
+                              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-red-700/80">Removed</p>
+                              <div className="flex flex-wrap gap-1">
+                                {fieldChange.oldVal.length > 0 ? fieldChange.oldVal.map((tag: string) => (
+                                  <span key={tag} className="rounded-full border border-red-200 bg-white px-2 py-0.5 text-[11px] text-red-700">
+                                    {tag}
+                                  </span>
+                                )) : <span className="text-[11px] text-slate-500">No tags removed</span>}
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-green-200 bg-green-50 p-2.5">
+                              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-green-700/80">Added</p>
+                              <div className="flex flex-wrap gap-1">
+                                {fieldChange.newVal.length > 0 ? fieldChange.newVal.map((tag: string) => (
+                                  <span key={tag} className="rounded-full border border-green-200 bg-white px-2 py-0.5 text-[11px] text-green-700">
+                                    {tag}
+                                  </span>
+                                )) : <span className="text-[11px] text-slate-500">No new tags</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          renderValueRow(fieldChange.oldVal, fieldChange.newVal)
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="flex items-center gap-3 text-sm">
-              <div className="flex-1 bg-red-50 text-red-700 p-2.5 rounded-lg border border-red-100 line-through truncate opacity-70">
-                {change.oldVal || '(Blank)'}
-              </div>
-              <ArrowRight size={16} className="text-slate-300 flex-shrink-0" />
-              <div className="flex-1 bg-green-50 text-green-800 font-bold p-2.5 rounded-lg border border-green-200 shadow-sm truncate">
-                {change.newVal || '(Blank)'}
-              </div>
-            </div>
+            renderValueRow(change.oldVal, change.newVal)
           )}
         </div>
       ))}

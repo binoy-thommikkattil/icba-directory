@@ -2,10 +2,12 @@
 import { useAuth } from '@/lib/AuthContext';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { LogOut } from 'lucide-react';
 
 export default function TopBar() {
   const { user, userProfile, logout } = useAuth();
   const pathname = usePathname();
+  const firstName = user?.displayName?.split(' ')[0] || userProfile?.name?.split(' ')[0] || 'Member';
 
   // 1. THE WHITELIST: Define all the private directory-related base paths
   const directoryPaths = [
@@ -33,18 +35,24 @@ export default function TopBar() {
   if (!user || !isDirectoryPage) return null;
 
   return (
-    <div className="w-full bg-white px-6 py-4 border-b border-slate-200 sticky top-0 z-50 flex items-center justify-between print:hidden">
+    <div className="w-full bg-white px-4 py-3 border-b border-slate-200 sticky top-0 z-50 flex items-center justify-between gap-3 print:hidden sm:px-6 sm:py-4">
       {/* Updated to use Next.js Link and point to the dashboard */}
-      <Link href="/dashboard" className="text-2xl font-serif font-bold text-teal-700 tracking-tight hover:opacity-80 transition">
+      <Link href="/dashboard" className="text-xl font-serif font-bold text-teal-700 tracking-tight hover:opacity-80 transition sm:text-2xl">
         ICBA Directory
       </Link>
-      
-      <div className="flex items-center space-x-4 text-sm">
-        <span className="text-slate-500 hidden sm:inline whitespace-nowrap">
-  Welcome back <strong className="text-teal-700">{userProfile?.name || 'Member'}</strong>
-</span>
-        <button onClick={logout} className="px-4 py-2 bg-slate-100 text-slate-800 font-medium rounded-lg hover:bg-slate-200 transition shadow-sm whitespace-nowrap">
-          Logout
+
+      <div className="ml-auto flex items-center gap-2 text-sm sm:gap-4">
+        <span className="text-slate-500 whitespace-nowrap">
+          Welcome <strong className="text-teal-700">{firstName}</strong>
+        </span>
+        <button
+          onClick={logout}
+          aria-label="Logout"
+          title="Logout"
+          className="inline-flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-800 font-medium transition hover:bg-slate-200 shadow-sm sm:px-4 sm:py-2"
+        >
+          <LogOut className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Logout</span>
         </button>
       </div>
     </div>
