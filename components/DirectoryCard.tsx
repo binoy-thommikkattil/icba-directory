@@ -280,9 +280,10 @@ export default function DirectoryCard({
               {familyName}
             </h2>
             {status === 'Inactive' && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="px-3 py-1 rounded-full text-xs font-bold border bg-slate-50 text-slate-500 border-slate-200 uppercase tracking-widest inline-block">
-                  {status}
+              <div className="mt-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.25em] text-rose-700 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-rose-500" />
+                  Inactive
                 </span>
               </div>
             )}

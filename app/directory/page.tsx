@@ -18,14 +18,14 @@ function DirectoryContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'families' | 'members'>('families');
   
-  const { user, loading: authLoading } = useAuth(); 
+  const { user, loading: authLoading, userProfile } = useAuth(); 
   const router = useRouter();
 
   // Retrieve Search Parameters natively
   const searchParams = useSearchParams();
   const filterTag = searchParams.get('tag');
 
-  const isAdmin = user?.email?.toLowerCase().includes('admin');
+  const isAdmin = userProfile?.role === 'admin' || user?.email?.toLowerCase().includes('admin');
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -55,10 +55,13 @@ function DirectoryContent() {
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [families]);
 
-  const filteredFamilies = useMemo(() => {
-    const matchedFamilies = sortedFamilies.filter((family) => {
-      if (!isAdmin && family.status === 'Inactive') return false;
+  const visibleFamilies = useMemo(() => {
+    if (isAdmin) return sortedFamilies;
+    return sortedFamilies.filter((family) => family.status !== 'Inactive');
+  }, [sortedFamilies, isAdmin]);
 
+  const filteredFamilies = useMemo(() => {
+    const matchedFamilies = visibleFamilies.filter((family) => {
       const haystack = [
         family.familyName,
         family.primaryMobile,
@@ -75,7 +78,7 @@ function DirectoryContent() {
     });
 
     return matchedFamilies;
-  }, [sortedFamilies, searchTerm, isAdmin]);
+  }, [visibleFamilies, searchTerm]);
 
   // Filtering Logic Appended
   const filteredIndividuals = useMemo(() => {
@@ -105,13 +108,13 @@ function DirectoryContent() {
   }, [allIndividuals, searchTerm, isAdmin, filterTag]);
 
   const handleSwipeLeft = () => {
-    const idx = sortedFamilies.findIndex(f => f.id === selectedFamilyId);
-    if (idx >= 0 && idx < sortedFamilies.length - 1) setSelectedFamilyId(sortedFamilies[idx + 1].id);
+    const idx = visibleFamilies.findIndex(f => f.id === selectedFamilyId);
+    if (idx >= 0 && idx < visibleFamilies.length - 1) setSelectedFamilyId(visibleFamilies[idx + 1].id);
   };
 
   const handleSwipeRight = () => {
-    const idx = sortedFamilies.findIndex(f => f.id === selectedFamilyId);
-    if (idx > 0) setSelectedFamilyId(sortedFamilies[idx - 1].id);
+    const idx = visibleFamilies.findIndex(f => f.id === selectedFamilyId);
+    if (idx > 0) setSelectedFamilyId(visibleFamilies[idx - 1].id);
   };
 
   const handleExportPDF = async () => {
@@ -299,7 +302,7 @@ function DirectoryContent() {
   if (authLoading || !user) return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Verifying access...</div>;
   if (dbLoading) return <div className="p-8 flex h-screen items-center justify-center font-bold text-slate-500">Loading directory data...</div>;
 
-  const selectedFamilyData = sortedFamilies.find(f => f.id === selectedFamilyId);
+  const selectedFamilyData = visibleFamilies.find(f => f.id === selectedFamilyId);
   
   const pageTitle = filterTag === 'youth' ? 'Youth Directory' :
                     filterTag === 'bachelor' ? 'Bachelors Directory' :

@@ -343,10 +343,16 @@ export default function AddFamily() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tags / Roles</label>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tags / Roles</label>
+                      {!isAdmin && (
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Admin only</span>
+                      )}
+                    </div>
                     <select
                       multiple
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-600 min-h-[7rem]"
+                      disabled={!isAdmin}
+                      className={`w-full p-2.5 border rounded-lg text-sm outline-none min-h-[7rem] ${isAdmin ? 'bg-slate-50 border-slate-200 focus:border-teal-600' : 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed'}`}
                       value={Array.isArray(member.tags) ? member.tags : []}
                       onChange={e => {
                         const selectedTags = Array.from(e.target.selectedOptions, option => option.value);
@@ -357,6 +363,11 @@ export default function AddFamily() {
                         <option key={option} value={option}>{option}</option>
                       ))}
                     </select>
+                    {!isAdmin && (
+                      <p className="mt-2 text-[11px] font-medium text-slate-500">
+                        Tags and roles are read-only for non-admins. Ask an admin to update them.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100">
