@@ -3,7 +3,7 @@ import { motion, PanInfo } from 'framer-motion';
 import { Phone, MapPin, Edit, FileText, Share2, Loader2, Home, HeartHandshake, Users, X, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { logActivity } from '@/lib/logger';
 import { getBase64ImageFromUrl } from '@/lib/imageUtils';
@@ -11,6 +11,8 @@ import { getBase64ImageFromUrl } from '@/lib/imageUtils';
 export interface Individual {
   name: string;
   mobile?: string;
+  personalMobile?: string;
+  phone?: string;
   relationship?: string;
   bloodGroup?: string;
   tags?: string[];
@@ -59,8 +61,21 @@ export default function DirectoryCard({
   const { user, role, userProfile } = useAuth();
   const [isSharing, setIsSharing] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isPhotoLoading, setIsPhotoLoading] = useState(Boolean(photoUrl || photoBase64));
+  const [photoError, setPhotoError] = useState(false);
 
   const displayPhoto = photoUrl || photoBase64;
+
+  useEffect(() => {
+    if (!displayPhoto) {
+      setIsPhotoLoading(false);
+      setPhotoError(false);
+      return;
+    }
+
+    setIsPhotoLoading(true);
+    setPhotoError(false);
+  }, [displayPhoto]);
 
   const formattedDate = lastEdited
     ? new Date(lastEdited).toLocaleString('en-IN', {
@@ -293,19 +308,35 @@ export default function DirectoryCard({
         </div>
 
         {displayPhoto ? (
-          <div className="relative w-full bg-slate-50 print:hidden overflow-hidden cursor-pointer group" onClick={() => setIsLightboxOpen(true)}>
-            <img
-              src={displayPhoto}
-              onError={(e) => {
-                if (photoBase64 && e.currentTarget.src !== photoBase64) {
-                  e.currentTarget.src = photoBase64;
-                } else {
-                  e.currentTarget.style.display = 'none';
-                }
-              }}
-              alt={`${familyName}`}
-              className="w-full aspect-[4/3] object-cover object-center group-hover:scale-105 transition duration-300"
-            />
+          <div className="relative w-full aspect-[4/3] bg-slate-50 print:hidden overflow-hidden cursor-pointer group" onClick={() => setIsLightboxOpen(true)}>
+            {isPhotoLoading && !photoError && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-100/90 backdrop-blur-sm">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white/90 shadow-sm">
+                  <Loader2 size={24} className="animate-spin text-teal-600" />
+                </div>
+              </div>
+            )}
+            {!photoError ? (
+              <img
+                src={displayPhoto}
+                onLoad={() => setIsPhotoLoading(false)}
+                onError={(e) => {
+                  setIsPhotoLoading(false);
+                  setPhotoError(true);
+                  if (photoBase64 && e.currentTarget.src !== photoBase64) {
+                    e.currentTarget.src = photoBase64;
+                  } else {
+                    e.currentTarget.style.display = 'none';
+                  }
+                }}
+                alt={`${familyName}`}
+                className={`h-full w-full object-cover object-center transition duration-300 group-hover:scale-105 ${isPhotoLoading ? 'opacity-0' : 'opacity-100'}`}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-r from-teal-600 to-teal-800">
+                <Users size={32} className="text-white opacity-40" />
+              </div>
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
               <span className="bg-black/60 text-white px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition text-sm font-medium backdrop-blur-sm">Click to expand</span>
             </div>
@@ -317,6 +348,36 @@ export default function DirectoryCard({
         )}
 
         <div className="p-6 space-y-8">
+          {members.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Member Contacts</h3>
+              <div className="space-y-3">
+                {members.map((member, index) => {
+                  const memberPhone = member.personalMobile || member.mobile || member.phone;
+                  return (
+                    <div key={`${member.name}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{member.name}</p>
+                          {member.relationship && (
+                            <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{member.relationship}</p>
+                          )}
+                        </div>
+                        {memberPhone ? (
+                          <a href={`tel:${memberPhone}`} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 transition hover:bg-teal-100">
+                            <Phone size={14} /> {memberPhone}
+                          </a>
+                        ) : (
+                          <span className="text-sm text-slate-400">No phone</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {members.length > 0 && (
             <div>
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Family Members</h3>

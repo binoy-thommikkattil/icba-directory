@@ -278,7 +278,7 @@ function EditFamilyContent() {
         });
         alert('Edit submitted for admin approval!');
       }
-      router.push('/directory');
+      router.replace('/directory');
     } catch (error) {
       console.error(error);
       alert('Failed to update details. Please try again.');

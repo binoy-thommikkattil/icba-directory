@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import DirectoryCard, { Individual } from '@/components/DirectoryCard';
-import { Search, ArrowLeft, Download, Loader2, Users } from 'lucide-react';
+import { Search, ArrowLeft, Download, Loader2, Users, LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { jsPDF } from 'jspdf';
@@ -16,6 +16,7 @@ function DirectoryContent() {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'families' | 'members'>('families');
   
   const { user, loading: authLoading } = useAuth(); 
   const router = useRouter();
@@ -54,6 +55,28 @@ function DirectoryContent() {
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [families]);
 
+  const filteredFamilies = useMemo(() => {
+    const matchedFamilies = sortedFamilies.filter((family) => {
+      if (!isAdmin && family.status === 'Inactive') return false;
+
+      const haystack = [
+        family.familyName,
+        family.primaryMobile,
+        family.homeAssembly,
+        family.commendedAssembly,
+        family.currentAddress,
+        family.currentMapAddress,
+        family.nativeAddress,
+        family.nativeMapAddress,
+        family.members?.map((member: Individual) => `${member.name} ${member.relationship || ''} ${member.mobile || ''}`).join(' ')
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      return haystack.includes(searchTerm.toLowerCase());
+    });
+
+    return matchedFamilies;
+  }, [sortedFamilies, searchTerm, isAdmin]);
+
   // Filtering Logic Appended
   const filteredIndividuals = useMemo(() => {
     const matchedIndividuals = allIndividuals.filter(ind => {
@@ -82,13 +105,13 @@ function DirectoryContent() {
   }, [allIndividuals, searchTerm, isAdmin, filterTag]);
 
   const handleSwipeLeft = () => {
-    const idx = families.findIndex(f => f.id === selectedFamilyId);
-    if (idx < families.length - 1) setSelectedFamilyId(families[idx + 1].id);
+    const idx = sortedFamilies.findIndex(f => f.id === selectedFamilyId);
+    if (idx >= 0 && idx < sortedFamilies.length - 1) setSelectedFamilyId(sortedFamilies[idx + 1].id);
   };
 
   const handleSwipeRight = () => {
-    const idx = families.findIndex(f => f.id === selectedFamilyId);
-    if (idx > 0) setSelectedFamilyId(families[idx - 1].id);
+    const idx = sortedFamilies.findIndex(f => f.id === selectedFamilyId);
+    if (idx > 0) setSelectedFamilyId(sortedFamilies[idx - 1].id);
   };
 
   const handleExportPDF = async () => {
@@ -276,7 +299,7 @@ function DirectoryContent() {
   if (authLoading || !user) return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Verifying access...</div>;
   if (dbLoading) return <div className="p-8 flex h-screen items-center justify-center font-bold text-slate-500">Loading directory data...</div>;
 
-  const selectedFamilyData = families.find(f => f.id === selectedFamilyId);
+  const selectedFamilyData = sortedFamilies.find(f => f.id === selectedFamilyId);
   
   const pageTitle = filterTag === 'youth' ? 'Youth Directory' :
                     filterTag === 'bachelor' ? 'Bachelors Directory' :
@@ -307,18 +330,76 @@ function DirectoryContent() {
             </button>
           </div>
 
+          <div className="mb-6 inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('families')}
+              className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold transition ${viewMode === 'families' ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              <LayoutGrid size={16} className="mr-2" /> Families
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('members')}
+              className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold transition ${viewMode === 'members' ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              <Users size={16} className="mr-2" /> Members
+            </button>
+          </div>
+
           <div className="relative mb-6">
             <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="Search by name..."
+              placeholder={viewMode === 'families' ? 'Search families...' : 'Search members...'}
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-600 shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {filteredIndividuals.length === 0 ? (
+          {viewMode === 'families' ? (
+            filteredFamilies.length === 0 ? (
+              <div className="text-center py-10 bg-white rounded-xl border border-slate-200">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users size={24} className="text-slate-400" />
+                </div>
+                <p className="text-slate-500 font-medium">No families found.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 pb-20">
+                {filteredFamilies.map((family) => (
+                  <button
+                    key={family.id}
+                    onClick={() => setSelectedFamilyId(family.id)}
+                    className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 transition text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 shrink-0 bg-teal-50 text-teal-600 font-bold text-lg rounded-full flex items-center justify-center border border-teal-100 uppercase">
+                        {family.familyName?.charAt(0) || 'F'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-serif font-bold text-lg text-slate-900 truncate">{family.familyName}</h3>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {Array.isArray(family.members) ? `${family.members.length} member${family.members.length === 1 ? '' : 's'}` : 'Family profile'}
+                            </p>
+                          </div>
+                          {family.status === 'Inactive' && (
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
+                        {family.primaryMobile && <p className="mt-2 text-sm font-medium text-teal-700">{family.primaryMobile}</p>}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )
+          ) : filteredIndividuals.length === 0 ? (
              <div className="text-center py-10 bg-white rounded-xl border border-slate-200">
                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                  <Users size={24} className="text-slate-400" />
