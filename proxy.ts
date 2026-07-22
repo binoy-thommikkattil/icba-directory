@@ -9,12 +9,12 @@ import { rateLimit } from '@/lib/rate-limit';
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://maps.googleapis.com https://www.google.com https://www.gstatic.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://maps.googleapis.com https://www.google.com https://www.gstatic.com https://cdnjs.cloudflare.com https://static.cloudflareinsights.com https://apis.google.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com https://firebase.googleapis.com",
-  "frame-src 'self' https://www.google.com https://www.gstatic.com",
+  "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com https://firebase.googleapis.com https://securetoken.googleapis.com https://*.firebaseapp.com",
+  "frame-src 'self' https://www.google.com https://www.gstatic.com https://*.firebaseapp.com https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
