@@ -6,6 +6,14 @@ const RATE_LIMIT_MAX_REQUESTS = 20;
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
 
 export function rateLimit(request: NextRequest | Request) {
+  const rscHeader = request.headers.get('RSC');
+  const prefetchHeader = request.headers.get('Next-Router-Prefetch');
+  const rscQuery = new URL(request.url).searchParams.get('_rsc');
+
+  if (rscHeader || prefetchHeader || rscQuery) {
+    return null;
+  }
+
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   const now = Date.now();
   const bucket = ipBuckets.get(ip);
