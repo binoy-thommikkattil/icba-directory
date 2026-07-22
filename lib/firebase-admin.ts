@@ -1,6 +1,6 @@
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
+import type { App } from 'firebase-admin/app';
+import { cert } from 'firebase-admin/app';
 
 let adminApp: App | null = null;
 
@@ -13,26 +13,26 @@ function getAdminApp(): App {
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 
   if (serviceAccount) {
-    adminApp = initializeApp({
+    adminApp = admin.initializeApp({
       credential: cert(JSON.parse(serviceAccount)),
       projectId,
     });
   } else if (projectId && clientEmail && privateKey) {
-    adminApp = initializeApp({
+    adminApp = admin.initializeApp({
       credential: cert({ projectId, clientEmail, privateKey }),
       projectId,
     });
   } else {
-    adminApp = initializeApp({ projectId });
+    adminApp = admin.initializeApp({ projectId });
   }
 
   return adminApp;
 }
 
 export function getAdminAuth() {
-  return getAuth(getAdminApp());
+  return admin.auth(getAdminApp());
 }
 
 export function getAdminDb() {
-  return getFirestore(getAdminApp());
+  return admin.firestore(getAdminApp());
 }
