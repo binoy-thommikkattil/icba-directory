@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { storage } from '@/lib/firebase';
+import { createSong } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { ArrowLeft, Save, Image as ImageIcon, Type, Loader2, Sparkles } from 'lucide-react';
@@ -71,14 +71,6 @@ export default function AddSongPage() {
             let finalMeaningMal = '';
             let finalStory = story;
             let aiCallSucceeded = false;
-
-            setSubmissionStatus('Assigning Song Number...');
-            const q = query(collection(db, 'songs'), orderBy('songNumber', 'desc'), limit(1));
-            const snapshot = await getDocs(q);
-            let nextSongNumber = 1;
-            if (!snapshot.empty) {
-                nextSongNumber = (snapshot.docs[0].data().songNumber || 0) + 1;
-            }
 
             if (inputMethod === 'image' && imageFiles.length > 0) {
                 setSubmissionStatus('Uploading selected images...');
@@ -159,7 +151,6 @@ export default function AddSongPage() {
 
             const newSongData = {
                 title: finalTitle,
-                songNumber: nextSongNumber,
                 language: finalLanguage,
                 originalAuthor: finalAuthor || 'Unknown',
                 lyrics: extractedLyrics,
@@ -177,7 +168,7 @@ export default function AddSongPage() {
                 updatedAt: new Date().toISOString()
             };
 
-            await addDoc(collection(db, 'songs'), newSongData);
+            await createSong(newSongData);
             router.push('/songbook');
 
         } catch (error: any) {

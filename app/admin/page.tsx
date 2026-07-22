@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, or } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, or } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
+import { approveFamilyCreation, approveFamilyEdit, rejectFamilyCreation, rejectFamilyEdit } from '@/app/actions/dbActions';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, X } from 'lucide-react';
@@ -38,18 +39,11 @@ export default function AdminDashboard() {
 
   // 3. APPROVAL LOGIC
   const approveRequest = async (record: any) => {
-    const docRef = doc(db, 'members', record.id);
     try {
       if (record.isPendingCreation) {
-        // For new families, just flip the pending switch to false to make them live
-        await updateDoc(docRef, { isPendingCreation: false });
+        await approveFamilyCreation(record.id);
       } else if (record.hasPendingEdit) {
-        // For edits, overwrite the live data with the draftData, then clear the draft
-        await updateDoc(docRef, {
-          ...record.draftData,
-          hasPendingEdit: false,
-          draftData: null
-        });
+        await approveFamilyEdit(record.id, record.draftData);
       }
     } catch (error) {
       console.error("Error approving:", error);
@@ -61,14 +55,9 @@ export default function AdminDashboard() {
   const denyRequest = async (record: any) => {
     try {
       if (record.isPendingCreation) {
-        // If it's a completely new, unapproved family, deleting it removes the spam
-        await deleteDoc(doc(db, 'members', record.id));
+        await rejectFamilyCreation(record.id);
       } else if (record.hasPendingEdit) {
-        // If it's a bad edit to an existing family, just delete the draft and keep the old data live
-        await updateDoc(doc(db, 'members', record.id), {
-          hasPendingEdit: false,
-          draftData: null
-        });
+        await rejectFamilyEdit(record.id);
       }
     } catch (error) {
       console.error("Error denying:", error);

@@ -1,9 +1,19 @@
 export const maxDuration = 60; // Allow Vercel up to 60 seconds to process
 
 import { NextResponse } from 'next/server';
+import { getSessionUser } from '@/lib/auth-session';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
   try {
+    const rateLimited = rateLimit(req);
+    if (rateLimited) return rateLimited;
+
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { inputMethod, payload, language, title, originalAuthor } = await req.json();
 
     if (!process.env.GEMINI_API_KEY) {

@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { createPrayerPoint, updatePrayerPoint, deletePrayerPoint } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Trash2, Edit2, X, Clock } from 'lucide-react'; 
@@ -87,9 +88,9 @@ export default function PrayerPage() {
     
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'prayer_points', editingId), payload);
+        await updatePrayerPoint(editingId, payload);
       } else {
-        await addDoc(collection(db, 'prayer_points'), payload);
+        await createPrayerPoint(payload);
       }
       resetForm();
     } catch (error) {
@@ -100,7 +101,7 @@ export default function PrayerPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this prayer point?")) {
-      await deleteDoc(doc(db, 'prayer_points', id));
+      await deletePrayerPoint(id);
     }
   };
 

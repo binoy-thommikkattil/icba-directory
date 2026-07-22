@@ -1,9 +1,9 @@
 'use client';
 import { useState, useCallback } from 'react';
-import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { storage } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { createFamilySubmission } from '@/app/actions/dbActions';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon } from 'lucide-react';
 import Link from 'next/link';
 import Cropper from 'react-easy-crop';
@@ -190,7 +190,7 @@ export default function AddFamily() {
     };
 
     try {
-      await addDoc(collection(db, 'members'), payload);
+      await createFamilySubmission(payload);
 
       if (isAdmin) {
         alert('Family added successfully to the directory!');

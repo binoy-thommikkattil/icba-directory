@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await firebaseSignOut(auth);
+    await fetch('/api/session', { method: 'DELETE' });
     setUser(null); setRole(null); setUserProfile(null);
   };
 

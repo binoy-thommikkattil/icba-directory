@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { updateFamilySubmission } from '@/app/actions/dbActions';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -264,18 +265,10 @@ function EditFamilyContent() {
     };
 
     try {
+      await updateFamilySubmission(familyId, formData, isAdmin);
       if (isAdmin) {
-        await updateDoc(doc(db, 'members', familyId), {
-          ...formData,
-          hasPendingEdit: false,
-          draftData: null
-        });
         alert('Family details updated successfully!');
       } else {
-        await updateDoc(doc(db, 'members', familyId), {
-          hasPendingEdit: true,
-          draftData: formData
-        });
         alert('Edit submitted for admin approval!');
       }
       router.replace('/directory');

@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, ChangeEvent } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { updateSong } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -102,7 +103,7 @@ export default function EditSongPage() {
         }
       }
 
-      await updateDoc(doc(db, 'songs', params.id as string), {
+      await updateSong(params.id as string, {
         title, 
         language, 
         originalAuthor, 

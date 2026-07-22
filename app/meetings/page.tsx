@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { createMeeting, updateMeeting, deleteMeeting } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { ArrowLeft, Video, MapPin, Plus, Trash2, Edit2, X } from 'lucide-react';
@@ -57,9 +58,9 @@ export default function MeetingsPage() {
     
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'meetings', editingId), payload);
+        await updateMeeting(editingId, payload);
       } else {
-        await addDoc(collection(db, 'meetings'), payload);
+        await createMeeting(payload);
       }
       resetForm();
     } catch (error) {
@@ -70,7 +71,7 @@ export default function MeetingsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this meeting?")) {
-      await deleteDoc(doc(db, 'meetings', id));
+      await deleteMeeting(id);
     }
   };
 

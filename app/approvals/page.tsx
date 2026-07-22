@@ -1,9 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
-import { logActivity } from '@/lib/logger';
+import {
+  approveFamilyCreation,
+  approveFamilyEdit,
+  approveUserAccess,
+  rejectFamilyCreation,
+  rejectFamilyEdit,
+  rejectUserAccess,
+} from '@/app/actions/dbActions';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 // ADDED Phone and Mail icons
@@ -296,43 +303,37 @@ export default function ApprovalsPage() {
 
   // UPDATED: Logs correct contact info instead of just "u.email"
   const handleApproveUser = async (u: any) => {
-    await updateDoc(doc(db, 'users', u.id), { role: 'approved' });
-    await logActivity(userProfile, 'Approved User Access', `Granted directory access to ${u.phone || u.email || u.name}`);
+    await approveUserAccess(u.id);
   };
 
   // UPDATED: More generic alert and logs correct info
   const handleRejectUser = async (u: any) => {
     if (confirm("Deny access to this user?")) {
-      await deleteDoc(doc(db, 'users', u.id));
-      await logActivity(userProfile, 'Denied User Access', `Rejected access request for ${u.phone || u.email || u.name}`);
+      await rejectUserAccess(u.id, `Rejected access request for ${u.phone || u.email || u.name}`);
     }
   };
 
   const handleApproveCreation = async (family: any) => {
-    await updateDoc(doc(db, 'members', family.id), { isPendingCreation: false });
-    await logActivity(userProfile, 'Published Family', `Approved new profile for ${family.familyName}`);
+    await approveFamilyCreation(family.id);
     setReviewItem(null);
   };
 
   const handleRejectCreation = async (family: any) => {
     if (confirm("Delete this new family submission completely?")) {
-      await deleteDoc(doc(db, 'members', family.id));
-      await logActivity(userProfile, 'Deleted Family Submission', `Discarded new profile submission for ${family.familyName}`);
+      await rejectFamilyCreation(family.id);
       setReviewItem(null);
     }
   };
 
   const handleApproveEdit = async (family: any) => {
     if (!family.draftData) return;
-    await updateDoc(doc(db, 'members', family.id), { ...family.draftData, hasPendingEdit: false, draftData: null });
-    await logActivity(userProfile, 'Merged Edit', `Approved profile updates for ${family.familyName}`);
+    await approveFamilyEdit(family.id, family.draftData);
     setReviewItem(null);
   };
 
   const handleRejectEdit = async (family: any) => {
     if (confirm("Discard these proposed changes?")) {
-      await updateDoc(doc(db, 'members', family.id), { hasPendingEdit: false, draftData: null });
-      await logActivity(userProfile, 'Discarded Edit', `Rejected profile updates for ${family.familyName}`);
+      await rejectFamilyEdit(family.id);
       setReviewItem(null);
     }
   };

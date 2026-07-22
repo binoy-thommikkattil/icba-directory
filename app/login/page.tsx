@@ -15,6 +15,18 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { BookOpen, Loader2, Phone, Mail } from 'lucide-react';
 
+async function setSessionCookie(idToken: string) {
+  const response = await fetch('/api/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to create a secure session.');
+  }
+}
+
 export default function Login() {
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [name, setName] = useState('');
@@ -55,6 +67,7 @@ export default function Login() {
     setLoading(true); setError('');
     try {
       const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      await setSessionCookie(await cred.user.getIdToken());
 
       // NEW: Check if they are a first-time Google user and create their profile
       const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
@@ -84,6 +97,7 @@ export default function Login() {
 
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: name });
+        await setSessionCookie(await cred.user.getIdToken());
 
         // Safely write the exact name they typed into the database
         await setDoc(doc(db, 'users', cred.user.uid), {
@@ -93,7 +107,8 @@ export default function Login() {
           createdAt: new Date().toISOString()
         });
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        await setSessionCookie(await cred.user.getIdToken());
       }
     } catch (err: any) {
       // 1. Prints the exact error to your browser console for debugging
@@ -156,6 +171,7 @@ export default function Login() {
     setLoading(true); setError('');
     try {
       const result = await confirmationResult.confirm(otp);
+      await setSessionCookie(await result.user.getIdToken());
       const verifiedUser = result.user;
       const userDoc = await getDoc(doc(db, 'users', verifiedUser.uid));
 

@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
-import { logActivity } from '@/lib/logger';
+import { deleteUserAccount } from '@/app/actions/dbActions';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Users, Trash2, Loader2, ShieldCheck, Phone, Mail } from 'lucide-react';
@@ -30,8 +30,7 @@ export default function ManageUsersPage() {
 
   const handleDeleteUser = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to revoke access for ${name}?`)) {
-      await deleteDoc(doc(db, 'users', id));
-      await logActivity(userProfile, 'Revoked User Access', `Deleted account for ${name}`);
+      await deleteUserAccount(id);
     }
   };
 
