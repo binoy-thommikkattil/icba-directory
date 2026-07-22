@@ -81,13 +81,17 @@ This application leverages several powerful APIs. For most small to medium-sized
 ## 🛠 Getting Started
 
 ### 1. Prerequisites
-* Node.js 18.x or later installed.
+* Node.js **20 LTS** or later (pinned in [.nvmrc](.nvmrc) and enforced by the `engines` field in [package.json](package.json)). Run `nvm use` after cloning.
 * A free [Firebase](https://console.firebase.google.com/) account (Blaze plan recommended for image storage).
 * A free [Google AI Studio](https://aistudio.google.com/) account for the Gemini API Key.
 * A free [Google Cloud Console](https://console.cloud.google.com/) account with Maps JavaScript API, Places API, and Geocoding API enabled.
 
 ### 2. Environment Variables
-Create a `.env.local` file in the root of the project and add your configuration keys:
+Copy [.env.example](.env.example) to `.env.local` and fill in the values:
+
+```bash
+cp .env.example .env.local
+```
 
 ```env
 # FIREBASE CONFIG
@@ -103,16 +107,24 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
 # GEMINI AI CONFIG (Note: NOT prefixed with NEXT_PUBLIC_ for security)
 GEMINI_API_KEY=your_gemini_api_key
+
+# FIREBASE ADMIN (server-only). Provide EITHER the full JSON blob ...
+FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
+# ... OR the three split values (keep the literal \n escapes in the private key):
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-...@your_project_id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
 ### 3. Installation & Running
 
-Clone the repository and install the dependencies:
+Clone the repository and install the dependencies with the locked tree:
 
 ```bash
-git clone [https://github.com/your-username/church-directory.git](https://github.com/your-username/church-directory.git)
+git clone https://github.com/your-username/church-directory.git
 cd church-directory
-npm install
+nvm use            # respects .nvmrc
+npm ci             # deterministic install from package-lock.json
 ```
 
 Start the development server:
@@ -239,5 +251,192 @@ gsutil cors set cors.json gs://your-project-id.firebasestorage.app
 
 ---
 
+## 🧭 Solution Structure
+
+This is a single-project **Next.js 16 (App Router)** application written in TypeScript. There are no additional projects, workspaces, or class libraries — the entire codebase is contained in this repository.
+
+| Area | Path | Purpose |
+| :--- | :--- | :--- |
+| App shell | [app/layout.tsx](app/layout.tsx), [app/globals.css](app/globals.css) | Root layout, global styles, `AuthProvider`, PWA install prompt, service worker registration |
+| Public pages | [app/page.tsx](app/page.tsx), [app/beliefs/page.tsx](app/beliefs/page.tsx), [app/visit/page.tsx](app/visit/page.tsx), [app/privacy/page.tsx](app/privacy/page.tsx), [app/terms/page.tsx](app/terms/page.tsx), [app/sunday-school/page.tsx](app/sunday-school/page.tsx), [app/youth/page.tsx](app/youth/page.tsx) | SEO-facing marketing / info pages |
+| Auth flow | [app/login/page.tsx](app/login/page.tsx), [app/waiting-room/page.tsx](app/waiting-room/page.tsx), [app/api/session/route.ts](app/api/session/route.ts) | Firebase client sign-in, session cookie mint/clear, pending-user holding page |
+| Directory | [app/directory/page.tsx](app/directory/page.tsx), [app/add-family/page.tsx](app/add-family/page.tsx), [app/edit-family/[id]/page.tsx](app/edit-family/%5Bid%5D/page.tsx), [app/bachelors/page.tsx](app/bachelors/page.tsx), [app/blood-registry/page.tsx](app/blood-registry/page.tsx) | Family/member CRUD, filters, PDF export |
+| Songbook | [app/songbook/page.tsx](app/songbook/page.tsx), [app/songbook/add/page.tsx](app/songbook/add/page.tsx), [app/songbook/[id]/page.tsx](app/songbook/%5Bid%5D/page.tsx), [app/songbook/[id]/edit/page.tsx](app/songbook/%5Bid%5D/edit/page.tsx), [app/api/process-song/route.ts](app/api/process-song/route.ts) | Song CRUD, AI processing via Gemini |
+| Admin & approvals | [app/admin/page.tsx](app/admin/page.tsx), [app/approvals/page.tsx](app/approvals/page.tsx), [app/manage-users/page.tsx](app/manage-users/page.tsx), [app/activity-log/page.tsx](app/activity-log/page.tsx) | Admin dashboard, moderation queue, user role management, audit log |
+| Member dashboard | [app/dashboard/page.tsx](app/dashboard/page.tsx), [app/dashboard/beliefs/page.tsx](app/dashboard/beliefs/page.tsx) | Authenticated home, private statement of faith |
+| Community | [app/meetings/page.tsx](app/meetings/page.tsx), [app/prayer/page.tsx](app/prayer/page.tsx) | Meeting schedule, prayer points |
+| Server actions | [app/actions/dbActions.ts](app/actions/dbActions.ts) | `'use server'` writes for members, users, meetings, prayer, songs — all gated by `requireUser` / `requireAdmin` |
+| Shared UI | [components/](components) — `TopBar`, `PublicNavbar`, `Footer`, `DirectoryCard`, `SubDirectory`, `MapPicker`, `LocationPicker`, `InstallPrompt` | Reusable client components |
+| Library | [lib/](lib) — `firebase.ts`, `firebase-admin.ts`, `auth-session.ts`, `AuthContext.tsx`, `rate-limit.ts`, `logger.ts`, `imageUtils.ts` | Firebase SDK wiring, session helpers, client auth context, edge rate limiter, activity logger, image resize/crop utils |
+| Content | [data/beliefsContent.ts](data/beliefsContent.ts) | Static doctrinal content consumed by beliefs pages |
+| Edge middleware | [middleware.ts](middleware.ts) | CSP, security headers, IP-based rate limiting |
+| PWA assets | [public/manifest.json](public/manifest.json), [public/sw.js](public/sw.js) | Web app manifest, service worker |
+| SEO | [app/robots.ts](app/robots.ts), [app/sitemap.ts](app/sitemap.ts) | Generated robots and sitemap |
+
+---
+
+## 🏛 Architecture Summary
+
+**Style:** Single-tier Next.js App Router application with a two-plane trust model.
+
+- **Client plane** — React 19 client components under [app/](app). State comes from [lib/AuthContext.tsx](lib/AuthContext.tsx), which subscribes to Firebase Auth and the `users/{uid}` Firestore document via `onSnapshot`. Reads are direct-to-Firestore from the browser using the client SDK ([lib/firebase.ts](lib/firebase.ts)) and are gated by Firestore Security Rules.
+- **Server plane** — Server Actions ([app/actions/dbActions.ts](app/actions/dbActions.ts)) and Route Handlers ([app/api/session/route.ts](app/api/session/route.ts), [app/api/process-song/route.ts](app/api/process-song/route.ts)) run on the Node runtime. They use the Firebase Admin SDK ([lib/firebase-admin.ts](lib/firebase-admin.ts)) and verify the httpOnly `session` cookie via [lib/auth-session.ts](lib/auth-session.ts).
+
+**Dependency direction (one-way):**
+
+```
+components/  ─┐
+app/*/page  ─┼─► lib/AuthContext ─► lib/firebase (client SDK)
+              │
+app/actions ─┼─► lib/auth-session ─► lib/firebase-admin (Admin SDK)
+app/api/*   ─┘
+```
+
+`lib/` never imports from `app/` or `components/`. Client code never imports `firebase-admin`. Server code never imports `AuthContext`.
+
+**Patterns actually used:**
+
+- **Server Actions** for all authoritative writes ([app/actions/dbActions.ts](app/actions/dbActions.ts)).
+- **Layered access control** — `requireUser` / `requireAdmin` guards on every server action; Firestore Security Rules as the second line of defense.
+- **Session-cookie authentication** — Firebase ID token exchanged for a 5-day httpOnly session cookie at `/api/session`.
+- **Reactive context provider** ([lib/AuthContext.tsx](lib/AuthContext.tsx)) for global auth state.
+- **Approval workflow / draft-diff pattern** — non-admin edits are staged into `draftData` with `hasPendingEdit` / `isPendingCreation` flags until an admin merges them.
+- **Edge rate limiting** via an in-memory bucket in [lib/rate-limit.ts](lib/rate-limit.ts), invoked from [middleware.ts](middleware.ts) and the Gemini route.
+- **PWA** via [public/manifest.json](public/manifest.json) and a hand-rolled [public/sw.js](public/sw.js).
+
+---
+
+## 🔁 Key Business Flows
+
+**1. Authentication & role provisioning**
+
+`Login` → Firebase Auth sign-in → client posts ID token to `POST /api/session` → Admin SDK mints httpOnly session cookie → `AuthContext` subscribes to `users/{uid}` → user lands in `/waiting-room` (pending), `/dashboard` (approved), or `/admin` (admin).
+
+**2. Family submission & approval**
+
+`add-family` (client) → `createFamilySubmission` server action → writes to `members/{id}` with `isPendingCreation: true` unless caller is admin → admin visits `/approvals` → `approveFamilyCreation` clears the flag and records an entry in `activity_logs`.
+
+**3. Family edit with draft-diff**
+
+`edit-family/[id]` → `updateFamilySubmission` → if non-admin, writes proposed values to `draftData` and sets `hasPendingEdit: true` → admin sees the diff on `/approvals` → `approveFamilyEdit` merges `draftData` into the document.
+
+**4. AI-assisted song ingestion**
+
+`songbook/add` uploads image(s) or pastes text → `POST /api/process-song` (rate-limited, session-gated) → server calls Gemini 2.5 Flash with a strict JSON system prompt → response includes transliterations and meanings → client persists via `createSong` server action, which auto-assigns the next `songNumber`.
+
+**5. User management**
+
+`approvals` → `approveUserAccess` / `rejectUserAccess` mutate `users/{uid}.role`. `manage-users` → `deleteUserAccount`. Every admin action appends an `activity_logs` document.
+
+**6. PWA install & offline shell**
+
+[app/layout.tsx](app/layout.tsx) registers `/sw.js`. `InstallPrompt` component surfaces the `beforeinstallprompt` event. `manifest.json` supplies icons, theme color, and start URL.
+
+---
+
+## 🌐 External Dependencies
+
+| Category | Service | Used By |
+| :--- | :--- | :--- |
+| Database | Cloud Firestore | Client SDK (reads) + Admin SDK (writes). Collections: `users`, `members`, `songs`, `notices`, `activity_logs`, `meetings`, `prayer_points` |
+| Auth | Firebase Authentication | Email/password sign-in; session-cookie exchange in `/api/session` |
+| File Storage | Firebase Storage | Family photos, songbook images |
+| AI | Google Gemini 2.5 Flash (`GEMINI_API_KEY`) | `/api/process-song` OCR + transliteration + translation |
+| Maps (primary) | Google Maps JS API, Places Autocomplete, Geocoding | `MapPicker`, `LocationPicker` |
+| Maps (fallback) | OpenStreetMap tiles + Nominatim via `react-leaflet` | `MapPicker` fallback |
+| Hosting | Vercel (implied by `serverExternalPackages` config and Next.js defaults) | App hosting, edge middleware, serverless functions |
+| PWA | Web App Manifest + custom Service Worker | `/manifest.json`, `/sw.js` |
+
+No message queues, event buses, or background workers are used. There is no external monitoring integration configured in the repo.
+
+---
+
 ## 📄 License
 This project is open-source and available under the MIT License. Feel free to fork, modify, and use it for your own congregation.
+
+---
+
+## 🧾 Generated Metadata
+
+- Last Repository Scan: 2026-07-22
+- Last Documentation Refresh: 2026-07-22
+- Last Dead-Code Cleanup: 2026-07-22
+- Last Long-Term Stability Audit: 2026-07-22
+
+### 2026-07-22 — Long-Term Stability Audit
+
+Hardening applied so the app can run 7–10 years with minimal intervention:
+
+1. **Node runtime pinned.** Added [.nvmrc](.nvmrc) (`20.19.0`) and `engines.node: >=20.0.0 <25.0.0` in [package.json](package.json). Vercel and local dev will now refuse to build on incompatible Node.
+2. **Deterministic installs.** All builds should use `npm ci` against a committed [package-lock.json](package-lock.json). This is now the documented install command.
+3. **Environment template.** Added [.env.example](.env.example) so new deployments know exactly which variables are required. `.gitignore` was updated to un-ignore this file only.
+4. **Health check.** Added [app/api/health/route.ts](app/api/health/route.ts) at `GET /api/health` for uptime monitors. Returns `{ status, timestamp, commit, region }` with `dynamic = 'force-dynamic'` and `runtime = 'nodejs'` so it never gets served from cache.
+5. **`middleware.ts` → `proxy.ts` migration.** Next.js 16 deprecates the `middleware` file convention; Next.js 17 removes it. Renamed to [proxy.ts](proxy.ts) with the same rate-limit + CSP + security-headers logic (function `proxy` in place of `middleware`). See <https://nextjs.org/docs/messages/middleware-to-proxy>.
+
+### Operational Runbook
+
+**Backup / restore (Firestore)**
+
+```bash
+# One-off export to a Cloud Storage bucket (schedule via Cloud Scheduler for automated backups)
+gcloud firestore export gs://your-project-id-backups/$(date +%Y-%m-%d)
+
+# Restore
+gcloud firestore import gs://your-project-id-backups/2026-07-22
+```
+
+**Backup / restore (Firebase Storage)**
+
+```bash
+gsutil -m rsync -r gs://your-project-id.firebasestorage.app gs://your-project-id-backups/storage-$(date +%Y-%m-%d)
+```
+
+**Rotating a Firebase Admin service account**
+
+1. Google Cloud Console → IAM & Admin → Service Accounts → create a new key.
+2. Update `FIREBASE_SERVICE_ACCOUNT` (or the split `FIREBASE_*` vars) in Vercel → Project Settings → Environment Variables.
+3. Redeploy. Delete the old key from Google Cloud Console.
+
+**Rotating the Gemini API key**
+
+1. Google AI Studio → API Keys → create a new key.
+2. Update `GEMINI_API_KEY` in Vercel.
+3. Redeploy. Revoke the old key.
+
+**Uptime monitoring**
+
+Point any HTTP monitor (UptimeRobot, BetterStack, Pingdom, Google Cloud Monitoring) at `https://<your-domain>/api/health`. Expect HTTP 200 with `{"status":"ok"}` in ≤ 500 ms. If it returns 429, the rate limiter tripped — lower the monitor cadence to < 20 requests/minute per source IP.
+
+**Upgrading dependencies (annual cadence recommended)**
+
+```bash
+nvm use
+npm outdated
+npm update            # respects semver ranges in package.json
+npm run build         # smoke-check
+git diff package-lock.json
+```
+
+Major bumps (Next.js, Firebase, React) require explicit review — upgrade one at a time and re-run the build.
+
+### 2026-07-22 — Dead-Code Cleanup Summary
+
+Removed only items with zero remaining references anywhere in the codebase.
+
+**Files deleted (5 default create-next-app assets):**
+
+- `public/file.svg`
+- `public/globe.svg`
+- `public/next.svg`
+- `public/vercel.svg`
+- `public/window.svg`
+
+**Dependencies removed from [package.json](package.json) (3):**
+
+- `next-pwa` — not imported anywhere; PWA is hand-rolled via [public/sw.js](public/sw.js).
+- `html2pdf.js` — not imported anywhere; PDF export uses `jspdf` only.
+- `react-swipeable` — not imported anywhere.
+
+**Code elements removed:** none (no unused classes, interfaces, methods, properties, or private fields could be proven unused with 100% certainty).
+
+Run `npm install` to regenerate `package-lock.json`.

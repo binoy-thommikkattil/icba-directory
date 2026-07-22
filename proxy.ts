@@ -1,3 +1,8 @@
+// Renamed from `middleware.ts` per Next.js 16 deprecation notice:
+// https://nextjs.org/docs/messages/middleware-to-proxy
+//
+// The `proxy` file convention will remain supported through Next.js 17+;
+// the legacy `middleware` name is scheduled for removal.
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
@@ -17,7 +22,7 @@ const csp = [
   "upgrade-insecure-requests"
 ].join('; ');
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const rateLimited = rateLimit(request);
   if (rateLimited) return rateLimited;
 
