@@ -14,11 +14,11 @@ const csp = [
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com https://firebase.googleapis.com https://securetoken.googleapis.com https://*.firebaseapp.com",
-  "frame-src 'self' https://www.google.com https://www.gstatic.com https://*.firebaseapp.com https://accounts.google.com",
+  "frame-src 'self' https://www.google.com https://www.gstatic.com https://*.firebaseapp.com https://accounts.google.com https://immanuel-assembly.com https://www.immanuel-assembly.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self' https://*.firebaseapp.com https://immanuel-assembly.com https://www.immanuel-assembly.com",
   "upgrade-insecure-requests"
 ].join('; ');
 
@@ -30,7 +30,8 @@ export function proxy(request: NextRequest) {
   response.headers.set('Content-Security-Policy', csp);
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
+  // Changed from DENY to SAMEORIGIN so Firebase Auth can inject its background iframe
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN'); 
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   return response;
 }
