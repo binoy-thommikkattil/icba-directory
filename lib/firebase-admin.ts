@@ -1,14 +1,14 @@
-// FIX: Reverted to default import to prevent the ERR_REQUIRE_ESM/jose Turbopack crash
 import admin from 'firebase-admin';
+import type { App } from 'firebase-admin/app'; // Imported strictly for TypeScript typing
 
-let adminApp: admin.app.App | null = null;
+let adminApp: App | null = null;
 
-function getAdminApp(): admin.app.App {
+function getAdminApp(): App {
   if (adminApp) return adminApp;
 
   const existing = admin.apps;
   if (existing.length > 0) {
-    adminApp = existing[0] as admin.app.App;
+    adminApp = existing[0] as App;
     return adminApp;
   }
 
@@ -35,11 +35,11 @@ function getAdminApp(): admin.app.App {
 }
 
 export function getAdminAuth() {
-  // FIX: Bypassing strict TypeScript check to allow the Vercel build to pass
+  // Bypassing strict TypeScript check to allow the Vercel build to pass
   return (admin as any).auth(getAdminApp());
 }
 
 export function getAdminDb() {
-  // FIX: Bypassing strict TypeScript check to allow the Vercel build to pass
+  // Bypassing strict TypeScript check to allow the Vercel build to pass
   return (admin as any).firestore(getAdminApp());
 }
