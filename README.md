@@ -269,7 +269,7 @@ This is a single-project **Next.js 16 (App Router)** application written in Type
 | Shared UI | [components/](components) — `TopBar`, `PublicNavbar`, `Footer`, `DirectoryCard`, `SubDirectory`, `MapPicker`, `LocationPicker`, `InstallPrompt` | Reusable client components |
 | Library | [lib/](lib) — `firebase.ts`, `firebase-admin.ts`, `auth-session.ts`, `AuthContext.tsx`, `rate-limit.ts`, `logger.ts`, `imageUtils.ts` | Firebase SDK wiring, session helpers, client auth context, edge rate limiter, activity logger, image resize/crop utils |
 | Content | [data/beliefsContent.ts](data/beliefsContent.ts) | Static doctrinal content consumed by beliefs pages |
-| Edge middleware | [middleware.ts](middleware.ts) | CSP, security headers, IP-based rate limiting |
+| Edge proxy | [proxy.ts](proxy.ts) | CSP, security headers, IP-based rate limiting (renamed from `middleware.ts` per Next.js 16 deprecation) |
 | PWA assets | [public/manifest.json](public/manifest.json), [public/sw.js](public/sw.js) | Web app manifest, service worker |
 | SEO | [app/robots.ts](app/robots.ts), [app/sitemap.ts](app/sitemap.ts) | Generated robots and sitemap |
 
@@ -298,10 +298,10 @@ app/api/*   ─┘
 
 - **Server Actions** for all authoritative writes ([app/actions/dbActions.ts](app/actions/dbActions.ts)).
 - **Layered access control** — `requireUser` / `requireAdmin` guards on every server action; Firestore Security Rules as the second line of defense.
-- **Session-cookie authentication** — Firebase ID token exchanged for a 5-day httpOnly session cookie at `/api/session`.
+- **Dual-path server auth** — every server action accepts an optional trailing `token?: string | null` argument (client passes `await auth.currentUser?.getIdToken()`). `requireUser` / `requireAdmin` verify the token via `getAdminAuth().verifyIdToken(token, true)` first and fall back to the 5-day httpOnly session cookie minted at `POST /api/session`. Both paths check for revoked/deleted users.
 - **Reactive context provider** ([lib/AuthContext.tsx](lib/AuthContext.tsx)) for global auth state.
 - **Approval workflow / draft-diff pattern** — non-admin edits are staged into `draftData` with `hasPendingEdit` / `isPendingCreation` flags until an admin merges them.
-- **Edge rate limiting** via an in-memory bucket in [lib/rate-limit.ts](lib/rate-limit.ts), invoked from [middleware.ts](middleware.ts) and the Gemini route.
+- **Edge rate limiting** via an in-memory bucket in [lib/rate-limit.ts](lib/rate-limit.ts), invoked from [proxy.ts](proxy.ts) and the Gemini route.
 - **PWA** via [public/manifest.json](public/manifest.json) and a hand-rolled [public/sw.js](public/sw.js).
 
 ---
@@ -326,7 +326,7 @@ app/api/*   ─┘
 
 **5. User management**
 
-`approvals` → `approveUserAccess` / `rejectUserAccess` mutate `users/{uid}.role`. `manage-users` → `deleteUserAccount`. Every admin action appends an `activity_logs` document.
+`approvals` → `approveUserAccess` / `rejectUserAccess` mutate `users/{uid}.role`. `manage-users` → `deleteUserAccount` deletes the Firestore profile, calls `revokeRefreshTokens(uid)`, and best-effort deletes the Firebase Auth user so the removed member cannot re-authenticate. The deleted user's live `AuthContext` `onSnapshot` also fires and auto-signs them out plus clears the httpOnly `session` cookie via `DELETE /api/session`. Every admin action appends an `activity_logs` document.
 
 **6. PWA install & offline shell**
 
@@ -358,10 +358,21 @@ This project is open-source and available under the MIT License. Feel free to fo
 
 ## 🧾 Generated Metadata
 
-- Last Repository Scan: 2026-07-22
-- Last Documentation Refresh: 2026-07-22
+- Last Repository Scan: 2026-07-23
+- Last Documentation Refresh: 2026-07-23
 - Last Dead-Code Cleanup: 2026-07-22
 - Last Long-Term Stability Audit: 2026-07-22
+- Last Auth Hardening Pass: 2026-07-23
+
+### 2026-07-23 — Auth Hardening Pass
+
+Eliminates the `TypeError` in `verifyIdToken`, the transient `Unauthorized` errors on `/songbook/add` and `/edit-family/[id]`, and closes the previously-noted session revocation gap:
+
+1. **Firebase Admin credential validation.** [lib/firebase-admin.ts](lib/firebase-admin.ts) now normalizes `FIREBASE_PRIVATE_KEY` via `.replace(/\\n/g, '\n')`, strips wrapping quotes, asserts `BEGIN PRIVATE KEY`, and throws a descriptive Error listing missing env vars — no more silent init with undefined credentials.
+2. **Token-based server auth.** Every server action in [app/actions/dbActions.ts](app/actions/dbActions.ts) accepts an optional trailing `token?: string | null`. Clients pass `await auth.currentUser?.getIdToken()`; the server verifies via `getAdminAuth().verifyIdToken(token, true)` (with revocation check) inside a try/catch that logs and throws `Error('Unauthorized')`. Session cookie remains the fallback.
+3. **`/api/process-song` accepts `Authorization: Bearer <token>`.** Auth failures return `401 JSON` instead of crashing with a TypeError.
+4. **`/api/session` surfaces real errors.** Logs the underlying failure and distinguishes 401 (auth) from 500 (config) so the source of a broken login is visible in Vercel logs.
+5. **Instant admin-revocation is complete.** [app/actions/dbActions.ts](app/actions/dbActions.ts) `deleteUserAccount` now deletes the Firestore profile, calls `revokeRefreshTokens(uid)`, and best-effort `deleteUser(uid)` on Firebase Auth. [lib/AuthContext.tsx](lib/AuthContext.tsx) auto-kick now also clears the httpOnly `session` cookie via `DELETE /api/session` so server actions cannot continue to accept the deleted user for up to 5 days.
 
 ### 2026-07-22 — Long-Term Stability Audit
 

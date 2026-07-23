@@ -2,7 +2,7 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db, storage, auth } from '@/lib/firebase';
 import { updateSong } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
@@ -103,6 +103,7 @@ export default function EditSongPage() {
         }
       }
 
+      const token = await auth.currentUser?.getIdToken();
       await updateSong(params.id as string, {
         title, 
         language, 
@@ -117,7 +118,7 @@ export default function EditSongPage() {
         imageUrl: nextImageUrls[0] || '',
         authorName,
         updatedAt: new Date().toISOString()
-      });
+      }, token);
       router.push(`/songbook/${params.id}`);
     } catch (error) { 
         console.error('Failed to update song.', error);

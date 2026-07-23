@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { deleteSong } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
@@ -62,7 +62,8 @@ export default function ViewSongPage() {
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to permanently delete this song?")) return;
     try {
-      await deleteSong(song.id);
+      const token = await auth.currentUser?.getIdToken();
+      await deleteSong(song.id, token);
       router.push('/songbook');
     } catch (error) {
       console.error("Error deleting song:", error);

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { createPrayerPoint, updatePrayerPoint, deletePrayerPoint } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
@@ -87,10 +87,11 @@ export default function PrayerPage() {
     };
     
     try {
+      const token = await auth.currentUser?.getIdToken();
       if (editingId) {
-        await updatePrayerPoint(editingId, payload);
+        await updatePrayerPoint(editingId, payload, token);
       } else {
-        await createPrayerPoint(payload);
+        await createPrayerPoint(payload, token);
       }
       resetForm();
     } catch (error) {
@@ -101,7 +102,8 @@ export default function PrayerPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this prayer point?")) {
-      await deletePrayerPoint(id);
+      const token = await auth.currentUser?.getIdToken();
+      await deletePrayerPoint(id, token);
     }
   };
 

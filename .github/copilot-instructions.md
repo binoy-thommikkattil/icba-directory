@@ -13,7 +13,7 @@ Only these patterns are actually used. Do not introduce others without an explic
 - **Two-plane trust model:**
   - Client plane uses the Firebase **client SDK** ([lib/firebase.ts](../lib/firebase.ts)) and reads are gated by Firestore Security Rules.
   - Server plane uses the Firebase **Admin SDK** ([lib/firebase-admin.ts](../lib/firebase-admin.ts)) and is gated by session-cookie verification in [lib/auth-session.ts](../lib/auth-session.ts).
-- **Session-cookie auth** — the client exchanges a Firebase ID token for an httpOnly `session` cookie at [app/api/session/route.ts](../app/api/session/route.ts). Server code must call `getSessionUser` / `getSessionUserProfile` / `requireUser` / `requireAdmin` rather than reading cookies directly.
+- **Dual-path server auth** — server code calls `requireUser(token?)` / `requireAdmin(token?)` from [lib/auth-session.ts](../lib/auth-session.ts). Preferred: the client passes `await auth.currentUser?.getIdToken()` as the last argument to the server action (or as `Authorization: Bearer <token>` for route handlers). Fallback: the httpOnly `session` cookie minted at [app/api/session/route.ts](../app/api/session/route.ts). Both paths use `checkRevoked=true`, so deleted users are rejected immediately. Never read cookies directly outside `lib/auth-session.ts` and route handlers.
 - **Reactive context** — global auth state comes from [lib/AuthContext.tsx](../lib/AuthContext.tsx). Client pages consume `useAuth()`; they do not re-subscribe to `onAuthStateChanged` themselves.
 - **Approval / draft-diff workflow** — non-admin edits to `members/{id}` are staged into `draftData` with `hasPendingEdit: true` (or `isPendingCreation: true` for new records) and merged by an admin on `/approvals`.
 - **RBAC via role field** — `users/{uid}.role ∈ { 'admin', 'approved', 'pending' }`. Rules also enforce these on the client SDK side.
@@ -96,7 +96,7 @@ The codebase does **not** use a DI container. Wire dependencies by direct import
 
 - **Reads from client components:** use the Firebase client SDK (`onSnapshot`, `getDocs`) directly with `db` from `@/lib/firebase`. Security Rules do the enforcement.
 - **Writes:** call a server action from [app/actions/dbActions.ts](../app/actions/dbActions.ts). If a needed action does not exist, add one there — do not create parallel write paths in components.
-- **Every server action must** start with `await requireUser()` or `await requireAdmin()`, then call `getAdminDb()`, then `revalidatePath(...)` for any pages that render the mutated data.
+- **Every new server action must** accept an optional trailing `token?: string | null` parameter, start with `await requireUser(token)` or `await requireAdmin(token)`, then call `getAdminDb()`, then `revalidatePath(...)` for any pages that render the mutated data. Every client caller must obtain the token via `await auth.currentUser?.getIdToken()` and pass it as the last positional argument.
 - **Timestamps:** use `new Date().toISOString()` — the codebase stores ISO strings, not Firestore `Timestamp` objects.
 - **Audit trail:** admin-only mutations append a document to `activity_logs` with `{ userName, userEmail, action, details, timestamp }`. Preserve this convention.
 
@@ -116,7 +116,7 @@ The codebase does **not** use a DI container. Wire dependencies by direct import
 ### Security
 
 - Never log secrets or session cookies.
-- The CSP in [middleware.ts](../middleware.ts) is strict; if you add a new script host, update the CSP explicitly.
+- The CSP in [proxy.ts](../proxy.ts) is strict; if you add a new script host, update the CSP explicitly.
 - Never widen Firestore/Storage rules from the README defaults without discussing it.
 - Never move `GEMINI_API_KEY` (or any unprefixed secret) into a `NEXT_PUBLIC_*` variable.
 
@@ -153,7 +153,8 @@ When Copilot analyzes or generates code in this repo:
 
 ## Generated Metadata
 
-- Last Repository Scan: 2026-07-22
-- Last Instruction Refresh: 2026-07-22
+- Last Repository Scan: 2026-07-23
+- Last Instruction Refresh: 2026-07-23
 - Last Dead-Code Cleanup: 2026-07-22 — removed `next-pwa`, `html2pdf.js`, `react-swipeable` from [package.json](../package.json) and the 5 default create-next-app SVGs from `public/`. No code elements deleted.
 - Last Long-Term Stability Audit: 2026-07-22 — added `.nvmrc`, `.env.example`, `engines.node` pin, `GET /api/health` liveness probe; renamed `middleware.ts` → `proxy.ts` per Next.js 16 deprecation notice.
+- Last Auth Hardening Pass: 2026-07-23 — strict `FIREBASE_PRIVATE_KEY` validation in [lib/firebase-admin.ts](../lib/firebase-admin.ts); token-based `requireUser(token?)` / `requireAdmin(token?)` with `verifyIdToken(token, true)`; every server action now takes an optional trailing `token` arg; `/api/process-song` accepts `Authorization: Bearer`; `deleteUserAccount` revokes refresh tokens + deletes Firebase Auth user; `AuthContext` auto-kick clears the httpOnly `session` cookie.

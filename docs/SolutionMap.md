@@ -1,6 +1,6 @@
 # Solution Map
 
-**Scan Date:** 2026-07-22 (long-term stability audit)
+**Scan Date:** 2026-07-23 (auth hardening pass)
 
 ## Solution Overview
 
@@ -92,8 +92,11 @@ Example: [app/directory/page.tsx](../app/directory/page.tsx) → `db` → `membe
 
 ```
 Client form (app/add-family/page.tsx or app/edit-family/[id]/page.tsx)
+  → const token = await auth.currentUser?.getIdToken()
   → Server Action (app/actions/dbActions.ts :: createFamilySubmission / updateFamilySubmission)
-    → requireUser() reads session cookie via getAdminAuth().verifySessionCookie
+    → requireUser(token)
+        → getAdminAuth().verifyIdToken(token, true)   // preferred, checkRevoked=true
+        → fallback: getAdminAuth().verifySessionCookie(cookie, true)
     → getAdminDb().collection('members').add / .update
     → revalidatePath('/directory'), revalidatePath('/dashboard')
   → Client receives { success: true, id }
@@ -297,7 +300,7 @@ Single project; the graph is layer-internal:
 1. **No automated tests.** [package.json](../package.json) declares no `test` script and no testing framework. Regressions rely entirely on manual QA. Recommend adding at minimum a Playwright smoke suite for the login → approval → directory flow and a Vitest suite for server-action guards.
 2. **In-memory rate limiter.** [lib/rate-limit.ts](../lib/rate-limit.ts) uses a per-instance `Map`. On Vercel serverless / edge, buckets are not shared across instances, so the 20-req/min ceiling is soft. Move to Upstash Redis or Vercel KV if abuse-resistance becomes a requirement.
 3. **Large page components.** [app/edit-family/[id]/page.tsx](../app/edit-family/%5Bid%5D/page.tsx) (`~573` lines to the default export) and [app/directory/page.tsx](../app/directory/page.tsx) (`~443` lines) are large single-file client components. Extraction of form sections and list virtualization would improve maintainability.
-4. **Session cookie lifetime is 5 days** ([app/api/session/route.ts](../app/api/session/route.ts)) with no server-side revocation path. If a user is demoted, they retain access until the cookie expires or they sign out. Consider a `sessionVersion` field on `users/{uid}` compared inside `requireUser`.
+4. **Session cookie lifetime is 5 days** ([app/api/session/route.ts](../app/api/session/route.ts)). Revocation is now enforced end-to-end (2026-07-23): `verifySessionCookie(cookie, true)` and `verifyIdToken(token, true)` both check for revoked tokens; `deleteUserAccount` calls `revokeRefreshTokens(uid)` + `deleteUser(uid)`; and the deleted user's client `AuthContext` auto-signs them out and clears the httpOnly `session` cookie. **Role demotion** (approved → pending) still does not revoke — access is refreshed on the next `onSnapshot` tick client-side but the session cookie remains valid server-side until it expires or the user is fully deleted. Consider calling `revokeRefreshTokens` on any role change if that gap matters.
 5. **No CI/CD pipeline in the repo.** No `.github/workflows/*` exists. Deployment is assumed to be Vercel Git integration; formalize with a `preview → production` workflow and typecheck/lint gates.
 6. **`activity_logs` is unbounded.** No TTL, retention policy, or archival. Costs and query latency will grow over time.
 7. **Client SDK reads bypass server logging.** Since the browser reads Firestore directly, sensitive views (e.g., blood registry) are only audited on the client via `logActivity`, which a determined user can skip. If audit is required for compliance, route those reads through server actions.
@@ -324,3 +327,4 @@ Items below have plausible but not 100%-provable disuse. They were left in place
 | 2026-07-22 | Repository scanned and SolutionMap generated |
 | 2026-07-22 | Dead-code cleanup pass: removed 5 unused public SVG assets and 3 unused npm dependencies (`next-pwa`, `html2pdf.js`, `react-swipeable`). SolutionMap refreshed. |
 | 2026-07-22 | Long-term stability audit: added `.nvmrc`, `.env.example`, `engines.node` pin, `/api/health` route; renamed `middleware.ts` → `proxy.ts` per Next.js 16 deprecation notice. |
+| 2026-07-23 | Auth hardening pass: strict credential validation in `lib/firebase-admin.ts`; every server action accepts optional `token?` arg with `verifyIdToken(token, true)`; `/api/process-song` accepts `Authorization: Bearer`; `deleteUserAccount` revokes refresh tokens + deletes Firebase Auth user; `AuthContext` auto-kick clears the httpOnly session cookie; `/api/session` now logs real errors. |

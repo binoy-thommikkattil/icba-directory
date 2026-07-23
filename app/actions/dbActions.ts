@@ -6,8 +6,13 @@ import { requireAdmin, requireUser } from '@/lib/auth-session';
 
 const getDb = () => getAdminDb();
 
-export async function createFamilySubmission(payload: any) {
-  const user = await requireUser();
+// Every server action accepts an optional `token` argument (last position).
+// The client passes `await auth.currentUser?.getIdToken()`; the server verifies
+// it via getAdminAuth().verifyIdToken(token). If missing/invalid, we fall back
+// to the session-cookie flow, then throw Error("Unauthorized").
+
+export async function createFamilySubmission(payload: any, token?: string | null) {
+  const user = await requireUser(token);
   const memberPayload = {
     ...payload,
     submittedBy: payload.submittedBy || user.profile?.name || user.email || 'Unknown User',
@@ -24,8 +29,13 @@ export async function createFamilySubmission(payload: any) {
   return { id: docRef.id, success: true };
 }
 
-export async function updateFamilySubmission(familyId: string, formData: any, isAdmin: boolean) {
-  const user = await requireUser();
+export async function updateFamilySubmission(
+  familyId: string,
+  formData: any,
+  isAdmin: boolean,
+  token?: string | null,
+) {
+  const user = await requireUser(token);
   if (!isAdmin) {
     await getDb().collection('members').doc(familyId).update({
       hasPendingEdit: true,
@@ -47,8 +57,8 @@ export async function updateFamilySubmission(familyId: string, formData: any, is
   return { success: true };
 }
 
-export async function approveUserAccess(userId: string) {
-  const admin = await requireAdmin();
+export async function approveUserAccess(userId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('users').doc(userId).update({ role: 'approved' });
   await getDb().collection('activity_logs').add({
     userName: admin.profile?.name || admin.email || 'Admin',
@@ -61,8 +71,8 @@ export async function approveUserAccess(userId: string) {
   return { success: true };
 }
 
-export async function rejectUserAccess(userId: string, reason?: string) {
-  const admin = await requireAdmin();
+export async function rejectUserAccess(userId: string, reason?: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('users').doc(userId).delete();
   await getDb().collection('activity_logs').add({
     userName: admin.profile?.name || admin.email || 'Admin',
@@ -75,8 +85,8 @@ export async function rejectUserAccess(userId: string, reason?: string) {
   return { success: true };
 }
 
-export async function approveFamilyCreation(familyId: string) {
-  const admin = await requireAdmin();
+export async function approveFamilyCreation(familyId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('members').doc(familyId).update({ isPendingCreation: false });
   await getDb().collection('activity_logs').add({
     userName: admin.profile?.name || admin.email || 'Admin',
@@ -89,8 +99,8 @@ export async function approveFamilyCreation(familyId: string) {
   return { success: true };
 }
 
-export async function rejectFamilyCreation(familyId: string) {
-  const admin = await requireAdmin();
+export async function rejectFamilyCreation(familyId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('members').doc(familyId).delete();
   await getDb().collection('activity_logs').add({
     userName: admin.profile?.name || admin.email || 'Admin',
@@ -103,8 +113,8 @@ export async function rejectFamilyCreation(familyId: string) {
   return { success: true };
 }
 
-export async function approveFamilyEdit(familyId: string, draftData: any) {
-  const admin = await requireAdmin();
+export async function approveFamilyEdit(familyId: string, draftData: any, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('members').doc(familyId).update({
     ...draftData,
     hasPendingEdit: false,
@@ -122,8 +132,8 @@ export async function approveFamilyEdit(familyId: string, draftData: any) {
   return { success: true };
 }
 
-export async function rejectFamilyEdit(familyId: string) {
-  const admin = await requireAdmin();
+export async function rejectFamilyEdit(familyId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('members').doc(familyId).update({ hasPendingEdit: false, draftData: null });
   await getDb().collection('activity_logs').add({
     userName: admin.profile?.name || admin.email || 'Admin',
@@ -136,9 +146,32 @@ export async function rejectFamilyEdit(familyId: string) {
   return { success: true };
 }
 
-export async function deleteUserAccount(userId: string) {
-  const admin = await requireAdmin();
+export async function deleteUserAccount(userId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
+  const { getAdminAuth } = await import('@/lib/firebase-admin');
+
+  // 1) Delete the Firestore profile — this triggers the deleted user's
+  //    onSnapshot listener in AuthContext, which auto-signs them out.
   await getDb().collection('users').doc(userId).delete();
+
+  // 2) Revoke refresh tokens so any cached ID token becomes invalid on the
+  //    next server verification (verifyIdToken(..., checkRevoked=true)).
+  try {
+    await getAdminAuth().revokeRefreshTokens(userId);
+  } catch (err) {
+    console.error('revokeRefreshTokens failed for', userId, err);
+  }
+
+  // 3) Best-effort delete the Firebase Auth user so they cannot log back in.
+  try {
+    await getAdminAuth().deleteUser(userId);
+  } catch (err: any) {
+    // auth/user-not-found is fine — profile-only accounts.
+    if (err?.code !== 'auth/user-not-found') {
+      console.error('deleteUser failed for', userId, err);
+    }
+  }
+
   await getDb().collection('activity_logs').add({
     userName: admin.profile?.name || admin.email || 'Admin',
     userEmail: admin.email || 'No Email',
@@ -150,8 +183,11 @@ export async function deleteUserAccount(userId: string) {
   return { success: true };
 }
 
-export async function upsertUserProfile(profile: { name?: string; email?: string; phone?: string }) {
-  const user = await requireUser();
+export async function upsertUserProfile(
+  profile: { name?: string; email?: string; phone?: string },
+  token?: string | null,
+) {
+  const user = await requireUser(token);
   const userRef = getDb().collection('users').doc(user.uid);
   const existing = await userRef.get();
 
@@ -170,8 +206,8 @@ export async function upsertUserProfile(profile: { name?: string; email?: string
   return { success: true };
 }
 
-export async function createMeeting(payload: any) {
-  const admin = await requireAdmin();
+export async function createMeeting(payload: any, token?: string | null) {
+  const admin = await requireAdmin(token);
   const docRef = await getDb().collection('meetings').add({
     ...payload,
     createdAt: new Date().toISOString(),
@@ -182,8 +218,8 @@ export async function createMeeting(payload: any) {
   return { id: docRef.id, success: true };
 }
 
-export async function updateMeeting(meetingId: string, payload: any) {
-  const admin = await requireAdmin();
+export async function updateMeeting(meetingId: string, payload: any, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('meetings').doc(meetingId).update({
     ...payload,
     updatedAt: new Date().toISOString(),
@@ -193,15 +229,15 @@ export async function updateMeeting(meetingId: string, payload: any) {
   return { success: true };
 }
 
-export async function deleteMeeting(meetingId: string) {
-  const admin = await requireAdmin();
+export async function deleteMeeting(meetingId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('meetings').doc(meetingId).delete();
   revalidatePath('/meetings');
   return { success: true };
 }
 
-export async function createPrayerPoint(payload: any) {
-  const admin = await requireAdmin();
+export async function createPrayerPoint(payload: any, token?: string | null) {
+  const admin = await requireAdmin(token);
   const docRef = await getDb().collection('prayer_points').add({
     ...payload,
     createdAt: new Date().toISOString(),
@@ -212,8 +248,8 @@ export async function createPrayerPoint(payload: any) {
   return { id: docRef.id, success: true };
 }
 
-export async function updatePrayerPoint(prayerId: string, payload: any) {
-  const admin = await requireAdmin();
+export async function updatePrayerPoint(prayerId: string, payload: any, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('prayer_points').doc(prayerId).update({
     ...payload,
     updatedAt: new Date().toISOString(),
@@ -223,15 +259,15 @@ export async function updatePrayerPoint(prayerId: string, payload: any) {
   return { success: true };
 }
 
-export async function deletePrayerPoint(prayerId: string) {
-  const admin = await requireAdmin();
+export async function deletePrayerPoint(prayerId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('prayer_points').doc(prayerId).delete();
   revalidatePath('/prayer');
   return { success: true };
 }
 
-export async function createSong(payload: any) {
-  const user = await requireUser();
+export async function createSong(payload: any, token?: string | null) {
+  const user = await requireUser(token);
   const songsRef = getDb().collection('songs');
   const latestSnap = await songsRef.orderBy('songNumber', 'desc').limit(1).get();
   const nextSongNumber = latestSnap.empty ? 1 : (latestSnap.docs[0].data().songNumber || 0) + 1;
@@ -248,8 +284,8 @@ export async function createSong(payload: any) {
   return { id: docRef.id, success: true };
 }
 
-export async function updateSong(songId: string, payload: any) {
-  const user = await requireUser();
+export async function updateSong(songId: string, payload: any, token?: string | null) {
+  const user = await requireUser(token);
   await getDb().collection('songs').doc(songId).update({
     ...payload,
     updatedAt: new Date().toISOString(),
@@ -259,8 +295,8 @@ export async function updateSong(songId: string, payload: any) {
   return { success: true };
 }
 
-export async function deleteSong(songId: string) {
-  const admin = await requireAdmin();
+export async function deleteSong(songId: string, token?: string | null) {
+  const admin = await requireAdmin(token);
   await getDb().collection('songs').doc(songId).delete();
   revalidatePath('/songbook');
   return { success: true };

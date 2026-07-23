@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db, storage, auth } from '@/lib/firebase';
 import { updateFamilySubmission } from '@/app/actions/dbActions';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon, Loader2 } from 'lucide-react';
@@ -265,7 +265,8 @@ function EditFamilyContent() {
     };
 
     try {
-      await updateFamilySubmission(familyId, formData, isAdmin);
+      const token = await auth.currentUser?.getIdToken();
+      await updateFamilySubmission(familyId, formData, isAdmin, token);
       if (isAdmin) {
         alert('Family details updated successfully!');
       } else {

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { deleteUserAccount } from '@/app/actions/dbActions';
 import { useRouter } from 'next/navigation';
@@ -30,7 +30,8 @@ export default function ManageUsersPage() {
 
   const handleDeleteUser = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to revoke access for ${name}?`)) {
-      await deleteUserAccount(id);
+      const token = await auth.currentUser?.getIdToken();
+      await deleteUserAccount(id, token);
     }
   };
 

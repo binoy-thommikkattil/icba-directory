@@ -43,6 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Profile doesn't exist yet.
             if (hasProfileExisted) {
               // It existed but disappeared. Admin deleted them! Auto-kick.
+              // Clear the httpOnly session cookie too, otherwise server actions
+              // would remain authenticated until the cookie expires.
+              fetch('/api/session', { method: 'DELETE' }).catch(() => {});
               firebaseSignOut(auth);
               setUser(null); setRole(null); setUserProfile(null);
             } else {

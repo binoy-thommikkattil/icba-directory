@@ -1,7 +1,7 @@
 'use client';
 import { useState, useCallback } from 'react';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { storage, auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { createFamilySubmission } from '@/app/actions/dbActions';
 import { Plus, Trash2, ArrowLeft, Upload, X, Crop as CropIcon } from 'lucide-react';
@@ -190,7 +190,8 @@ export default function AddFamily() {
     };
 
     try {
-      await createFamilySubmission(payload);
+      const token = await auth.currentUser?.getIdToken();
+      await createFamilySubmission(payload, token);
 
       if (isAdmin) {
         alert('Family added successfully to the directory!');

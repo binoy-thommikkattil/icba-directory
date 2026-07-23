@@ -27,8 +27,14 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ ok: true });
     response.cookies.set('session', sessionCookie, getCookieOptions());
     return response;
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  } catch (err) {
+    console.error('Failed to create session cookie:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    const isAuthError = /token|auth|credential|unauthorized/i.test(message);
+    return NextResponse.json(
+      { error: isAuthError ? 'Unauthorized' : 'Failed to create session' },
+      { status: isAuthError ? 401 : 500 }
+    );
   }
 }
 

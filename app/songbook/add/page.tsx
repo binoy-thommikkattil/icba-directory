@@ -178,7 +178,7 @@ export default function AddSongPage() {
                 updatedAt: new Date().toISOString()
             };
 
-            await createSong(newSongData);
+            await createSong(newSongData, token);
             router.push('/songbook');
 
         } catch (error: any) {

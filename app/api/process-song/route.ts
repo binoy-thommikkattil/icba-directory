@@ -5,34 +5,43 @@ import { getSessionUser } from '@/lib/auth-session';
 import { rateLimit } from '@/lib/rate-limit';
 import { getAdminAuth } from '@/lib/firebase-admin';
 
+async function resolveCaller(req: Request) {
+  // 1) Prefer explicit bearer ID token from the client.
+  const authHeader = req.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length).trim();
+    if (token) {
+      try {
+        return await getAdminAuth().verifyIdToken(token);
+      } catch (err) {
+        console.error('Firebase ID Token verification failed:', err);
+        throw new Error('Unauthorized');
+      }
+    }
+  }
+  // 2) Fall back to the session cookie flow.
+  const sessionUser = await getSessionUser();
+  if (sessionUser) return sessionUser;
+  throw new Error('Unauthorized');
+}
+
 export async function POST(req: Request) {
   try {
     const rateLimited = rateLimit(req);
     if (rateLimited) return rateLimited;
 
-    let user = await getSessionUser();
-    
-    // FIX: If the standard session fails, explicitly check for the Firebase ID Token
-    if (!user) {
-      const authHeader = req.headers.get('Authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.split('Bearer ')[1];
-        try {
-          user = await getAdminAuth().verifyIdToken(token);
-        } catch (e) {
-          console.error("Firebase ID Token verification failed:", e);
-        }
-      }
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    try {
+      await resolveCaller(req);
+    } catch (authErr: any) {
+      const msg = authErr?.message || 'Unauthorized';
+      const status = msg === 'Unauthorized' ? 401 : 500;
+      return NextResponse.json({ error: msg }, { status });
     }
 
     const { inputMethod, payload, language, title, originalAuthor } = await req.json();
 
     if (!process.env.GEMINI_API_KEY) {
-      console.error("API Key is missing from environment variables.");
+      console.error('API Key is missing from environment variables.');
       return NextResponse.json({ error: 'Missing Gemini API Key' }, { status: 500 });
     }
 
@@ -103,7 +112,7 @@ export async function POST(req: Request) {
         contents: [{ parts }],
         generationConfig: {
           temperature: 0.2,
-          response_mime_type: "application/json"
+          response_mime_type: 'application/json'
         }
       })
     });
@@ -111,8 +120,8 @@ export async function POST(req: Request) {
     const data = await apiResponse.json();
 
     if (!apiResponse.ok || !data.candidates) {
-      console.error("Google Gemini API rejected the request. Details:", JSON.stringify(data, null, 2));
-      const errorMessage = data.error?.message || "Unknown AI API Error";
+      console.error('Google Gemini API rejected the request. Details:', JSON.stringify(data, null, 2));
+      const errorMessage = data.error?.message || 'Unknown AI API Error';
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 
@@ -129,7 +138,7 @@ export async function POST(req: Request) {
     return NextResponse.json(normalizedResult);
 
   } catch (error) {
-    console.error("Internal API Route Error:", error);
+    console.error('Internal API Route Error:', error);
     return NextResponse.json({ error: 'Failed to process song backend' }, { status: 500 });
   }
 }

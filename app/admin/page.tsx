@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, or } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { approveFamilyCreation, approveFamilyEdit, rejectFamilyCreation, rejectFamilyEdit } from '@/app/actions/dbActions';
 import { useRouter } from 'next/navigation';
@@ -40,10 +40,11 @@ export default function AdminDashboard() {
   // 3. APPROVAL LOGIC
   const approveRequest = async (record: any) => {
     try {
+      const token = await auth.currentUser?.getIdToken();
       if (record.isPendingCreation) {
-        await approveFamilyCreation(record.id);
+        await approveFamilyCreation(record.id, token);
       } else if (record.hasPendingEdit) {
-        await approveFamilyEdit(record.id, record.draftData);
+        await approveFamilyEdit(record.id, record.draftData, token);
       }
     } catch (error) {
       console.error("Error approving:", error);
@@ -54,10 +55,11 @@ export default function AdminDashboard() {
   // 4. DENIAL LOGIC
   const denyRequest = async (record: any) => {
     try {
+      const token = await auth.currentUser?.getIdToken();
       if (record.isPendingCreation) {
-        await rejectFamilyCreation(record.id);
+        await rejectFamilyCreation(record.id, token);
       } else if (record.hasPendingEdit) {
-        await rejectFamilyEdit(record.id);
+        await rejectFamilyEdit(record.id, token);
       }
     } catch (error) {
       console.error("Error denying:", error);

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { createMeeting, updateMeeting, deleteMeeting } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
@@ -57,10 +57,11 @@ export default function MeetingsPage() {
     const payload = { title, time, type, linkOrLocation, updatedAt: new Date().toISOString() };
     
     try {
+      const token = await auth.currentUser?.getIdToken();
       if (editingId) {
-        await updateMeeting(editingId, payload);
+        await updateMeeting(editingId, payload, token);
       } else {
-        await createMeeting(payload);
+        await createMeeting(payload, token);
       }
       resetForm();
     } catch (error) {
@@ -71,7 +72,8 @@ export default function MeetingsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this meeting?")) {
-      await deleteMeeting(id);
+      const token = await auth.currentUser?.getIdToken();
+      await deleteMeeting(id, token);
     }
   };
 
