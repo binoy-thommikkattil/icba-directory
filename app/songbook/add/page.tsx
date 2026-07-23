@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+// FIX: Imported `auth` from your firebase config
+import { storage, auth } from '@/lib/firebase';
 import { createSong } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
@@ -57,6 +58,9 @@ export default function AddSongPage() {
         setSubmissionStatus('Initializing AI...');
 
         try {
+            // FIX: Generate the secure ID token from Firebase to pass to our API
+            const token = await auth.currentUser?.getIdToken();
+
             const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
             const imageUrls: string[] = [];
             
@@ -86,7 +90,10 @@ export default function AddSongPage() {
                     try {
                         const apiRes = await fetch('/api/process-song', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}` // FIX: Passing the token
+                            },
                             body: JSON.stringify({ inputMethod: 'image', payload: imageUrls, language, title, originalAuthor })
                         });
 
@@ -113,7 +120,10 @@ export default function AddSongPage() {
                 try {
                     const apiRes = await fetch('/api/process-song', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` // FIX: Passing the token
+                        },
                         body: JSON.stringify({ inputMethod: 'text', payload: lyrics, language, title, originalAuthor })
                     });
 

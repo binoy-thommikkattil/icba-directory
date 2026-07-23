@@ -3,13 +3,28 @@ export const maxDuration = 60; // Allow Vercel up to 60 seconds to process
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-session';
 import { rateLimit } from '@/lib/rate-limit';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
   try {
     const rateLimited = rateLimit(req);
     if (rateLimited) return rateLimited;
 
-    const user = await getSessionUser();
+    let user = await getSessionUser();
+    
+    // FIX: If the standard session fails, explicitly check for the Firebase ID Token
+    if (!user) {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.split('Bearer ')[1];
+        try {
+          user = await getAdminAuth().verifyIdToken(token);
+        } catch (e) {
+          console.error("Firebase ID Token verification failed:", e);
+        }
+      }
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -22,7 +37,6 @@ export async function POST(req: Request) {
     }
 
     let parts: any[] = [];
-
     const imageUrls = Array.isArray(payload) ? payload.filter(Boolean) : [payload].filter(Boolean);
 
     // 1. IF IT IS AN IMAGE
@@ -54,7 +68,6 @@ export async function POST(req: Request) {
       parts.push({ text: `Here are the lyrics of a song:\n\n${payload}\n\nClean up the formatting and provide the requested data.` });
     }
 
-    // Pass the user's manual inputs to the AI so it knows what to skip or fix
     parts.push({ text: `User provided Title: "${title || 'NONE'}". User provided Author: "${originalAuthor || 'NONE'}". User provided Language: "${language}".` });
 
     // 3. THE MASTER MUSIC HISTORIAN COMMAND
@@ -66,7 +79,7 @@ export async function POST(req: Request) {
     
     "language": The language of the song. If the user provided "Auto-Detect", identify the exact language (e.g., Malayalam, Hindi, Kannada, Telugu, Gujarati, Tamil, English).
     
-    "originalAuthor": The composer or writer. If the user provided an author, use it. If no author is provided, only return an author if you are 100% certain based on explicit evidence from the provided text or image. DO NOT guess or infer from style, language, or theme. If the writer is not explicitly written in the provided text/image, or if you are not 100% certain of the factual attribution, return the exact string "Unknown". Do not return an empty string.
+    "originalAuthor": The composer or writer. If the user provided an author, use it. If no author is provided, only return an author if you are 100% certain based on explicit evidence from the provided text or image. DO NOT guess or infer from style, language, or theme. Under no circumstances should any Malayalam song be attributed to PK Leelamma. If the writer is not explicitly written in the provided text/image, or if you are not 100% certain of the factual attribution, return the exact string "Unknown". Do not return an empty string.
 
     "lyrics": The song lyrics in the original language, cleanly formatted with clear stanza breaks.
     
@@ -89,7 +102,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: {
-          temperature: 0.2, // Lowered slightly to ensure stricter adherence to the V Nagel formatting rules
+          temperature: 0.2,
           response_mime_type: "application/json"
         }
       })
@@ -97,7 +110,6 @@ export async function POST(req: Request) {
 
     const data = await apiResponse.json();
 
-    // 5. BULLETPROOF ERROR HANDLING
     if (!apiResponse.ok || !data.candidates) {
       console.error("Google Gemini API rejected the request. Details:", JSON.stringify(data, null, 2));
       const errorMessage = data.error?.message || "Unknown AI API Error";
