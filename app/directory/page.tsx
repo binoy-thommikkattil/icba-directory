@@ -25,7 +25,7 @@ function DirectoryContent() {
   const searchParams = useSearchParams();
   const filterTag = searchParams.get('tag');
 
-  const isAdmin = userProfile?.role === 'admin' || user?.email?.toLowerCase().includes('admin');
+  const isAdmin = userProfile?.role === 'admin';
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -34,10 +34,18 @@ function DirectoryContent() {
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'members'), where('isPendingCreation', '==', false));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setFamilies(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setDbLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setFamilies(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setDbLoading(false);
+      },
+      (error) => {
+        console.error('Failed to load directory families:', error);
+        setFamilies([]);
+        setDbLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, [user]);
 

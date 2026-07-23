@@ -37,10 +37,17 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [user]);
 
+  const getFreshToken = async () => {
+    if (!auth.currentUser) {
+      throw new Error('You are not signed in. Please log in again.');
+    }
+    return auth.currentUser.getIdToken(true);
+  };
+
   // 3. APPROVAL LOGIC
   const approveRequest = async (record: any) => {
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFreshToken();
       if (record.isPendingCreation) {
         await approveFamilyCreation(record.id, token);
       } else if (record.hasPendingEdit) {
@@ -55,7 +62,7 @@ export default function AdminDashboard() {
   // 4. DENIAL LOGIC
   const denyRequest = async (record: any) => {
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFreshToken();
       if (record.isPendingCreation) {
         await rejectFamilyCreation(record.id, token);
       } else if (record.hasPendingEdit) {

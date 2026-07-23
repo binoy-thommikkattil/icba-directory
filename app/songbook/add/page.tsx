@@ -6,7 +6,8 @@ import { storage, auth } from '@/lib/firebase';
 import { createSong } from '@/app/actions/dbActions';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
-import { ArrowLeft, Save, Image as ImageIcon, Type, Loader2, Sparkles } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft, Image as ImageIcon, Type, Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AddSongPage() {
@@ -20,7 +21,7 @@ export default function AddSongPage() {
     const [title, setTitle] = useState('');
     const [originalAuthor, setOriginalAuthor] = useState('');
     const [language, setLanguage] = useState('Auto-Detect');
-    const [story, setStory] = useState('');
+    const story = '';
 
     // Input Method State (Moved to top of UI)
     const [inputMethod, setInputMethod] = useState<'text' | 'image'>('text');
@@ -58,8 +59,15 @@ export default function AddSongPage() {
         setSubmissionStatus('Initializing AI...');
 
         try {
-            // FIX: Generate the secure ID token from Firebase to pass to our API
-            const token = await auth.currentUser?.getIdToken();
+            // FIX: Force-refresh the ID token so we never send "Bearer undefined"
+            // or a stale/expired token. Abort early if the user isn't signed in.
+            if (!auth.currentUser) {
+                throw new Error('You are not signed in. Please log in again.');
+            }
+            const token = await auth.currentUser.getIdToken(true);
+            if (!token) {
+                throw new Error('Unable to obtain authentication token. Please log in again.');
+            }
 
             const authorName = userProfile?.name || user?.displayName || user?.email || 'Unknown Member';
             const imageUrls: string[] = [];
@@ -181,9 +189,10 @@ export default function AddSongPage() {
             await createSong(newSongData, token);
             router.push('/songbook');
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Detailed Error:", error);
-            alert(`Error: ${error.message || "Something went wrong saving to the database."}`);
+            const message = error instanceof Error ? error.message : "Something went wrong saving to the database.";
+            alert(`Error: ${message}`);
             setIsSubmitting(false);
         }
     };
@@ -232,7 +241,7 @@ export default function AddSongPage() {
                                             <div className="grid grid-cols-2 gap-2 w-full">
                                                 {imagePreviews.map((preview, index) => (
                                                     <div key={`${preview}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                                                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-32 object-contain p-2" />
+                                                        <Image src={preview} alt={`Preview ${index + 1}`} width={240} height={128} unoptimized className="w-full h-32 object-contain p-2" />
                                                     </div>
                                                 ))}
                                             </div>

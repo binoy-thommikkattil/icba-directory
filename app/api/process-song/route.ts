@@ -1,28 +1,20 @@
 export const maxDuration = 60; // Allow Vercel up to 60 seconds to process
 
 import { NextResponse } from 'next/server';
-import { getSessionUser } from '@/lib/auth-session';
+import { requireUser } from '@/lib/auth-session';
 import { rateLimit } from '@/lib/rate-limit';
-import { getAdminAuth } from '@/lib/firebase-admin';
+
+function getBearerToken(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token || token === 'undefined' || token === 'null') return null;
+  return token;
+}
 
 async function resolveCaller(req: Request) {
-  // 1) Prefer explicit bearer ID token from the client.
-  const authHeader = req.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice('Bearer '.length).trim();
-    if (token) {
-      try {
-        return await getAdminAuth().verifyIdToken(token);
-      } catch (err) {
-        console.error('Firebase ID Token verification failed:', err);
-        throw new Error('Unauthorized');
-      }
-    }
-  }
-  // 2) Fall back to the session cookie flow.
-  const sessionUser = await getSessionUser();
-  if (sessionUser) return sessionUser;
-  throw new Error('Unauthorized');
+  return requireUser(getBearerToken(req));
 }
 
 export async function POST(req: Request) {

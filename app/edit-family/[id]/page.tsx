@@ -265,7 +265,10 @@ function EditFamilyContent() {
     };
 
     try {
-      const token = await auth.currentUser?.getIdToken();
+      if (!auth.currentUser) {
+        throw new Error('You are not signed in. Please log in again.');
+      }
+      const token = await auth.currentUser.getIdToken(true);
       await updateFamilySubmission(familyId, formData, isAdmin, token);
       if (isAdmin) {
         alert('Family details updated successfully!');
@@ -273,9 +276,10 @@ function EditFamilyContent() {
         alert('Edit submitted for admin approval!');
       }
       router.replace('/directory');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
-      alert('Failed to update details. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to update details. Please try again.';
+      alert(message);
     } finally {
       setLoading(false);
     }

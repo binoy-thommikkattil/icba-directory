@@ -301,29 +301,36 @@ export default function ApprovalsPage() {
     return () => { unUsers(); unCreations(); unEdits(); };
   }, [role]);
 
+  const getFreshToken = async () => {
+    if (!auth.currentUser) {
+      throw new Error('You are not signed in. Please log in again.');
+    }
+    return auth.currentUser.getIdToken(true);
+  };
+
   // UPDATED: Logs correct contact info instead of just "u.email"
   const handleApproveUser = async (u: any) => {
-    const token = await auth.currentUser?.getIdToken();
+    const token = await getFreshToken();
     await approveUserAccess(u.id, token);
   };
 
   // UPDATED: More generic alert and logs correct info
   const handleRejectUser = async (u: any) => {
     if (confirm("Deny access to this user?")) {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFreshToken();
       await rejectUserAccess(u.id, `Rejected access request for ${u.phone || u.email || u.name}`, token);
     }
   };
 
   const handleApproveCreation = async (family: any) => {
-    const token = await auth.currentUser?.getIdToken();
+    const token = await getFreshToken();
     await approveFamilyCreation(family.id, token);
     setReviewItem(null);
   };
 
   const handleRejectCreation = async (family: any) => {
     if (confirm("Delete this new family submission completely?")) {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFreshToken();
       await rejectFamilyCreation(family.id, token);
       setReviewItem(null);
     }
@@ -331,14 +338,14 @@ export default function ApprovalsPage() {
 
   const handleApproveEdit = async (family: any) => {
     if (!family.draftData) return;
-    const token = await auth.currentUser?.getIdToken();
+    const token = await getFreshToken();
     await approveFamilyEdit(family.id, family.draftData, token);
     setReviewItem(null);
   };
 
   const handleRejectEdit = async (family: any) => {
     if (confirm("Discard these proposed changes?")) {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFreshToken();
       await rejectFamilyEdit(family.id, token);
       setReviewItem(null);
     }

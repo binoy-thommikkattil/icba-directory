@@ -1,12 +1,20 @@
 import { cookies } from 'next/headers';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+
+type UserProfile = {
+  role?: 'admin' | 'approved' | 'pending' | string;
+  email?: string;
+  name?: string;
+  [key: string]: unknown;
+};
 
 export interface AuthenticatedUser {
   uid: string;
   email: string | null;
-  profile: any | null;
+  profile: UserProfile | null;
   role: 'admin' | 'approved' | 'pending' | string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 async function decodeSessionCookie() {
@@ -31,9 +39,15 @@ async function decodeIdToken(token: string) {
   }
 }
 
-async function loadProfile(decoded: any): Promise<AuthenticatedUser> {
+function normalizeToken(token?: string | null) {
+  const trimmed = token?.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+  return trimmed;
+}
+
+async function loadProfile(decoded: DecodedIdToken): Promise<AuthenticatedUser> {
   const userDoc = await getAdminDb().collection('users').doc(decoded.uid).get();
-  const profile = userDoc.exists ? userDoc.data() : null;
+  const profile = userDoc.exists ? (userDoc.data() as UserProfile) : null;
   return {
     ...decoded,
     profile,
@@ -55,12 +69,24 @@ export async function getSessionUserProfile(): Promise<AuthenticatedUser | null>
 /**
  * Resolve the caller from either a Firebase ID token (preferred, passed from
  * client `await auth.currentUser?.getIdToken()`) or the session cookie fallback.
- * Throws Error("Unauthorized") if neither is valid.
+ * If token verification fails (stale/expired/revoked token), we still try the
+ * session cookie before giving up. Throws Error("Unauthorized") only when both
+ * paths fail.
  */
 export async function requireUser(token?: string | null): Promise<AuthenticatedUser> {
-  if (token && token.length > 0) {
-    const decoded = await decodeIdToken(token);
-    return loadProfile(decoded);
+  const normalizedToken = normalizeToken(token);
+
+  if (normalizedToken) {
+    try {
+      const decoded = await decodeIdToken(normalizedToken);
+      return await loadProfile(decoded);
+    } catch (err) {
+      // Token failed verification — fall through to cookie fallback rather
+      // than immediately rejecting. This makes the app resilient to stale
+      // client tokens (e.g. the client hasn't refreshed yet) as long as the
+      // httpOnly session cookie is still valid.
+      console.warn('ID token path failed, falling back to session cookie:', err);
+    }
   }
   const user = await getSessionUserProfile();
   if (!user) {

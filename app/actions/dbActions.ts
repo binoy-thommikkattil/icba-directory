@@ -6,6 +6,22 @@ import { requireAdmin, requireUser } from '@/lib/auth-session';
 
 const getDb = () => getAdminDb();
 
+function stripUndefinedValues(value: unknown): unknown {
+  if (value === undefined) return null;
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(stripUndefinedValues);
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, stripUndefinedValues(entryValue)])
+  );
+}
+
+function sanitizeForFirestore<T>(value: T): T {
+  return stripUndefinedValues(value) as T;
+}
+
 // Every server action accepts an optional `token` argument (last position).
 // The client passes `await auth.currentUser?.getIdToken()`; the server verifies
 // it via getAdminAuth().verifyIdToken(token). If missing/invalid, we fall back
@@ -13,9 +29,10 @@ const getDb = () => getAdminDb();
 
 export async function createFamilySubmission(payload: any, token?: string | null) {
   const user = await requireUser(token);
+  const cleanPayload = sanitizeForFirestore(payload);
   const memberPayload = {
-    ...payload,
-    submittedBy: payload.submittedBy || user.profile?.name || user.email || 'Unknown User',
+    ...cleanPayload,
+    submittedBy: cleanPayload.submittedBy || user.profile?.name || user.email || 'Unknown User',
     isPendingCreation: user.role !== 'admin',
     hasPendingEdit: false,
     draftData: null,
@@ -36,20 +53,29 @@ export async function updateFamilySubmission(
   token?: string | null,
 ) {
   const user = await requireUser(token);
-  if (!isAdmin) {
-    await getDb().collection('members').doc(familyId).update({
-      hasPendingEdit: true,
-      draftData: formData,
-      lastEdited: new Date().toISOString(),
-      submittedBy: formData.submittedBy || user.profile?.name || user.email || 'Unknown User',
-    });
-  } else {
-    await getDb().collection('members').doc(familyId).update({
-      ...formData,
-      hasPendingEdit: false,
-      draftData: null,
-      lastEdited: new Date().toISOString(),
-    });
+  const cleanFormData = sanitizeForFirestore(formData);
+  void isAdmin;
+  const canApplyDirectly = user.role === 'admin';
+
+  try {
+    if (!canApplyDirectly) {
+      await getDb().collection('members').doc(familyId).update({
+        hasPendingEdit: true,
+        draftData: cleanFormData,
+        lastEdited: new Date().toISOString(),
+        submittedBy: cleanFormData.submittedBy || user.profile?.name || user.email || 'Unknown User',
+      });
+    } else {
+      await getDb().collection('members').doc(familyId).update({
+        ...cleanFormData,
+        hasPendingEdit: false,
+        draftData: null,
+        lastEdited: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error('updateFamilySubmission failed:', { familyId, uid: user.uid, role: user.role }, err);
+    throw new Error('Failed to update family submission');
   }
 
   revalidatePath('/directory');
@@ -115,8 +141,9 @@ export async function rejectFamilyCreation(familyId: string, token?: string | nu
 
 export async function approveFamilyEdit(familyId: string, draftData: any, token?: string | null) {
   const admin = await requireAdmin(token);
+  const cleanDraftData = sanitizeForFirestore(draftData);
   await getDb().collection('members').doc(familyId).update({
-    ...draftData,
+    ...cleanDraftData,
     hasPendingEdit: false,
     draftData: null,
     lastEdited: new Date().toISOString(),

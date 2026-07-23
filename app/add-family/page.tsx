@@ -190,7 +190,10 @@ export default function AddFamily() {
     };
 
     try {
-      const token = await auth.currentUser?.getIdToken();
+      if (!auth.currentUser) {
+        throw new Error('You are not signed in. Please log in again.');
+      }
+      const token = await auth.currentUser.getIdToken(true);
       await createFamilySubmission(payload, token);
 
       if (isAdmin) {
@@ -200,9 +203,10 @@ export default function AddFamily() {
         alert('Details submitted! An admin will review and approve your submission shortly.');
         router.push('/dashboard');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
-      alert('Failed to submit details to the database.');
+      const message = error instanceof Error ? error.message : 'Failed to submit details to the database.';
+      alert(message);
     } finally {
       setLoading(false);
     }
