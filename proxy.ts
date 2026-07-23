@@ -30,9 +30,12 @@ export function proxy(request: NextRequest) {
   response.headers.set('Content-Security-Policy', csp);
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  // Changed from DENY to SAMEORIGIN so Firebase Auth can inject its background iframe
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN'); 
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  
+  // Explicitly allow popup communication for Firebase Auth
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+
   return response;
 }
 
