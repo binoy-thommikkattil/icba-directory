@@ -1,5 +1,8 @@
-import admin from 'firebase-admin';
-import type { App } from 'firebase-admin/app'; // Imported strictly for TypeScript typing
+import _admin from 'firebase-admin';
+import type { App } from 'firebase-admin/app';
+
+// Cast the entire default import to 'any' at the top level to silence Vercel's strict compiler
+const admin: any = _admin;
 
 let adminApp: App | null = null;
 
@@ -9,7 +12,7 @@ function getAdminApp(): App {
   const existing = admin.apps;
   if (existing.length > 0) {
     adminApp = existing[0] as App;
-    return adminApp;
+    return adminApp as App; // Fix: Explicitly tell TS this is not null
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
@@ -31,15 +34,13 @@ function getAdminApp(): App {
     adminApp = admin.initializeApp({ projectId });
   }
 
-  return adminApp;
+  return adminApp as App; // Fix: Explicitly tell TS this is not null
 }
 
 export function getAdminAuth() {
-  // Bypassing strict TypeScript check to allow the Vercel build to pass
-  return (admin as any).auth(getAdminApp());
+  return admin.auth(getAdminApp());
 }
 
 export function getAdminDb() {
-  // Bypassing strict TypeScript check to allow the Vercel build to pass
-  return (admin as any).firestore(getAdminApp());
+  return admin.firestore(getAdminApp());
 }
