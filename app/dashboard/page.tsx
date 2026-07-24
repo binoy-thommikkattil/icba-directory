@@ -279,7 +279,7 @@ export default function Dashboard() {
 
         <Link href="/meetings" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition"><Calendar size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Meetings</h2><p className="text-sm text-slate-500">Service schedule and links</p></div>
+          <div><h2 className="font-bold text-slate-800 text-lg">Meetings</h2><p className="text-sm text-slate-500">Meeting schedule and links</p></div>
         </Link>
 
         <Link href="/prayer" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 transition flex items-center gap-4 group">
@@ -297,7 +297,7 @@ export default function Dashboard() {
           </div>
           <div>
             <h2 className="font-bold text-slate-800 text-lg">Songbook</h2>
-            <p className="text-sm text-slate-500">Lyrics, translations, and chords</p>
+            <p className="text-sm text-slate-500">Lyrics, translations, and meaning</p>
           </div>
         </Link>
 

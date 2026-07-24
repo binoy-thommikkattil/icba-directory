@@ -106,7 +106,7 @@ export default function YouthPage() {
     return (
         <SubDirectory
             pageTitle="Youth Fellowship"
-            pageDescription="Members currently tagged as 'youth' or 'young family'."
+            pageDescription="Members currently tagged as 'Youth Meeting'."
             category="youth"
             members={taggedMembers}
         />

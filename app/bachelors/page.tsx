@@ -100,7 +100,7 @@ export default function BachelorsPage() {
     return (
         <SubDirectory
             pageTitle="Bachelor Meeting Members"
-            pageDescription="Members currently tagged as 'bachelor' or 'unmarried'."
+            pageDescription="Members currently tagged as 'Bachelor Meeting'."
             category="bachelors"
             members={taggedMembers}
         />
