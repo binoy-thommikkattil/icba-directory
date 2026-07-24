@@ -9,7 +9,13 @@ import Link from 'next/link';
 import { jsPDF } from 'jspdf';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBase64ImageFromUrl } from '@/lib/imageUtils';
-import { getMemberCallContact, getMemberWhatsAppContact } from '@/lib/phoneUtils';
+import { getMemberCallContact, getMemberWhatsAppContact, type PhoneContact } from '@/lib/phoneUtils';
+
+type MemberContactRow = {
+  member: Individual;
+  callContact: PhoneContact | null;
+  whatsappContact: PhoneContact | null;
+};
 
 function DirectoryContent() {
   const [families, setFamilies] = useState<any[]>([]);
@@ -227,7 +233,7 @@ function DirectoryContent() {
           primaryMobile: family.primaryMobile,
         };
 
-        const memberContactRows = (Array.isArray(family.members) ? family.members : []).map((member: Individual) => ({
+        const memberContactRows: MemberContactRow[] = (Array.isArray(family.members) ? family.members : []).map((member: Individual) => ({
           member,
           callContact: getMemberCallContact(member, familyPhoneFallback),
           whatsappContact: getMemberWhatsAppContact(member, familyPhoneFallback),
