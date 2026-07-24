@@ -7,6 +7,7 @@ import { approveFamilyCreation, approveFamilyEdit, rejectFamilyCreation, rejectF
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, X } from 'lucide-react';
+import { formatPhoneNumber } from '@/lib/phoneUtils';
 
 export default function AdminDashboard() {
   const { user, role, loading } = useAuth();
@@ -95,6 +96,10 @@ export default function AdminDashboard() {
         <div className="space-y-6">
           {queue.map((req) => (
             <div key={req.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col">
+              {(() => {
+                const activeData = req.isPendingCreation ? req : req.draftData;
+                return (
+                  <>
 
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -114,10 +119,15 @@ export default function AdminDashboard() {
 
               {/* Data Preview */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6 text-sm">
-                <p className="mb-1"><span className="font-bold text-slate-700">Phone:</span> {req.isPendingCreation ? req.primaryMobile : req.draftData?.primaryMobile}</p>
-                <p className="mb-1"><span className="font-bold text-slate-700">Address:</span> {req.isPendingCreation ? req.currentAddress : req.draftData?.currentAddress}</p>
-                <p><span className="font-bold text-slate-700">Members:</span> {(req.isPendingCreation ? req.members : req.draftData?.members)?.length || 0} individuals listed</p>
+                <p className="mb-1"><span className="font-bold text-slate-700">Call:</span> {formatPhoneNumber(activeData?.primaryCallCountryCode, activeData?.primaryCallPhone) || '-'}</p>
+                <p className="mb-1"><span className="font-bold text-slate-700">WhatsApp:</span> {formatPhoneNumber(activeData?.primaryWhatsAppCountryCode, activeData?.primaryWhatsAppPhone) || '-'}</p>
+                <p className="mb-1"><span className="font-bold text-slate-700">Address:</span> {activeData?.currentAddress || activeData?.currentMapAddress || '-'}</p>
+                <p><span className="font-bold text-slate-700">Members:</span> {activeData?.members?.length || 0} individuals listed</p>
               </div>
+
+                  </>
+                );
+              })()}
 
               {/* Action Buttons */}
               <div className="flex gap-3 mt-auto">

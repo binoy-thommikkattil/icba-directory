@@ -89,9 +89,13 @@ describe('dbActions server workflows', () => {
     const result = await createFamilySubmission(
       {
         familyName: 'New Family',
-        primaryMobile: '9876543210',
+        primaryMobile: '+91 9876543210',
+        primaryCallCountryCode: '+91',
+        primaryCallPhone: '9876543210',
+        primaryWhatsAppCountryCode: '+91',
+        primaryWhatsAppPhone: '9876543210',
         nested: { keep: 'yes', removeMe: undefined },
-        members: [{ name: 'New Parent', mobile: undefined, tags: ['Choir'] }],
+        members: [{ name: 'New Parent', callCountryCode: '+91', callPhone: '9876543210', whatsappCountryCode: '+91', whatsappPhone: undefined, tags: ['Choir'] }],
       },
       'approved-token',
     );
@@ -99,9 +103,10 @@ describe('dbActions server workflows', () => {
     expect(result).toEqual({ id: 'members-4', success: true });
     expect(state.members['members-4']).toMatchObject({
       familyName: 'New Family',
-      primaryMobile: '9876543210',
+      primaryMobile: '+91 9876543210',
+      primaryCallPhone: '9876543210',
       nested: { keep: 'yes' },
-      members: [{ name: 'New Parent', tags: ['Choir'] }],
+      members: [{ name: 'New Parent', callCountryCode: '+91', callPhone: '9876543210', whatsappCountryCode: '+91', tags: ['Choir'] }],
       submittedBy: 'Approved Member',
       isPendingCreation: true,
       hasPendingEdit: false,
@@ -110,7 +115,7 @@ describe('dbActions server workflows', () => {
       createdAt: '2026-07-23T08:30:00.000Z',
     });
     expect(state.members['members-4'].nested).not.toHaveProperty('removeMe');
-    expect(state.members['members-4'].members[0]).not.toHaveProperty('mobile');
+    expect(state.members['members-4'].members[0]).not.toHaveProperty('whatsappPhone');
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/directory');
   });
@@ -127,6 +132,38 @@ describe('dbActions server workflows', () => {
       isPendingCreation: false,
       createdBy: 'user-admin',
     });
+  });
+
+  it('bulk imports families through an admin-only server action', async () => {
+    const { bulkCreateFamilies } = await import('@/app/actions/dbActions');
+
+    const result = await bulkCreateFamilies([
+      {
+        familyName: 'Bulk Family',
+        status: 'Active',
+        primaryCallCountryCode: '+91',
+        primaryCallPhone: '9876543000',
+        primaryWhatsAppCountryCode: '+91',
+        primaryWhatsAppPhone: '9876543001',
+        members: [{ name: 'Bulk Member', callCountryCode: '+91', callPhone: '9876543000', whatsappCountryCode: '+91', whatsappPhone: '9876543001' }],
+      },
+    ], 'admin-token');
+
+    expect(result).toEqual({ success: true, count: 1 });
+    expect(mocks.requireAdmin).toHaveBeenCalledWith('admin-token');
+    expect(state.members['members-4']).toMatchObject({
+      familyName: 'Bulk Family',
+      isPendingCreation: false,
+      hasPendingEdit: false,
+      draftData: null,
+      createdBy: 'user-admin',
+      lastEdited: '2026-07-23T08:30:00.000Z',
+      submittedBy: 'Admin User',
+    });
+    expect(Object.values(state.activity_logs)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: 'Bulk Imported Families', details: 'Imported 1 families from a spreadsheet' }),
+    ]));
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/directory');
   });
 
   it('stages non-admin edits into draftData instead of changing published fields', async () => {

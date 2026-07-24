@@ -17,9 +17,9 @@ const groupFamily = {
   status: 'Active',
   submittedBy: 'Group Member',
   members: [
-    { name: 'Youth Member', mobile: '9000000001', tags: ['Youth Meeting'] },
-    { name: 'Bachelor Member', mobile: '9000000002', tags: ['Bachelor Meeting'] },
-    { name: 'Sunday Student', mobile: '9000000003', tags: ['Sunday School'] },
+    { name: 'Youth Member', callCountryCode: '+91', callPhone: '9000000001', whatsappCountryCode: '+91', whatsappPhone: '9000000001', tags: ['Youth Meeting'] },
+    { name: 'Bachelor Member', callCountryCode: '+91', callPhone: '9000000002', whatsappCountryCode: '+91', whatsappPhone: '9000000002', tags: ['Bachelor Meeting'] },
+    { name: 'Sunday Student', callCountryCode: '+91', callPhone: '9000000003', whatsappCountryCode: '+91', whatsappPhone: '9000000003', tags: ['Sunday School'] },
   ],
   isPendingCreation: false,
 };
@@ -116,7 +116,8 @@ describe('protected list pages', () => {
 
     await user.click(screen.getByRole('button', { name: 'O+' }));
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /whatsapp/i })).toHaveAttribute('href', 'https://wa.me/9876543200');
+    expect(screen.getByRole('link', { name: /call john doe/i })).toHaveAttribute('href', 'tel:+919876543200');
+    expect(screen.getByRole('link', { name: /whatsapp john doe/i })).toHaveAttribute('href', 'https://wa.me/919876543205');
   });
 
   it('lets admins revoke non-admin users but hides delete controls for admins', async () => {

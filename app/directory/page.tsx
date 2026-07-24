@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { jsPDF } from 'jspdf';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBase64ImageFromUrl } from '@/lib/imageUtils';
+import { getMemberCallContact, getMemberWhatsAppContact } from '@/lib/phoneUtils';
 
 function DirectoryContent() {
   const [families, setFamilies] = useState<any[]>([]);
@@ -57,7 +58,17 @@ function DirectoryContent() {
     let list: any[] = [];
     families.forEach(family => {
       family.members?.forEach((ind: Individual) => {
-        list.push({ ...ind, familyId: family.id, familyName: family.familyName, primaryMobile: family.primaryMobile, status: family.status });
+        list.push({
+          ...ind,
+          familyId: family.id,
+          familyName: family.familyName,
+          primaryCallCountryCode: family.primaryCallCountryCode,
+          primaryCallPhone: family.primaryCallPhone,
+          primaryWhatsAppCountryCode: family.primaryWhatsAppCountryCode,
+          primaryWhatsAppPhone: family.primaryWhatsAppPhone,
+          primaryMobile: family.primaryMobile,
+          status: family.status
+        });
       });
     });
     return list.sort((a, b) => a.name.localeCompare(b.name));
@@ -79,7 +90,7 @@ function DirectoryContent() {
         family.currentMapAddress,
         family.nativeAddress,
         family.nativeMapAddress,
-        family.members?.map((member: Individual) => `${member.name} ${member.relationship || ''} ${member.mobile || ''}`).join(' ')
+        family.members?.map((member: Individual) => `${member.name} ${member.relationship || ''} ${member.callPhone || ''} ${member.whatsappPhone || ''}`).join(' ')
       ].filter(Boolean).join(' ').toLowerCase();
 
       return haystack.includes(searchTerm.toLowerCase());
@@ -208,17 +219,49 @@ function DirectoryContent() {
           }
         }
 
+        const familyPhoneFallback = {
+          primaryCallCountryCode: family.primaryCallCountryCode,
+          primaryCallPhone: family.primaryCallPhone,
+          primaryWhatsAppCountryCode: family.primaryWhatsAppCountryCode,
+          primaryWhatsAppPhone: family.primaryWhatsAppPhone,
+          primaryMobile: family.primaryMobile,
+        };
+
+        const memberContactRows = (Array.isArray(family.members) ? family.members : []).map((member: Individual) => ({
+          member,
+          callContact: getMemberCallContact(member, familyPhoneFallback),
+          whatsappContact: getMemberWhatsAppContact(member, familyPhoneFallback),
+        }));
+
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Family Members:', margin, yPos);
+        pdf.text('Member Contacts:', margin, yPos);
         pdf.setFont('helvetica', 'normal');
         yPos += 7;
 
-        if (family.members && family.members.length > 0) {
-          family.members.forEach((member: Individual) => {
-            const memberText = `• ${member.name}`;
-            pdf.text(memberText, margin + 5, yPos);
+        if (memberContactRows.length > 0) {
+          memberContactRows.forEach(({ member, callContact, whatsappContact }) => {
+            if (yPos > pageHeight - 35) { pdf.addPage(); addPageFooter(); yPos = 30; }
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(member.name || 'Unnamed Member', margin + 5, yPos);
+            pdf.setFont('helvetica', 'normal');
             yPos += 6;
+
+            if (callContact) {
+              pdf.text(`Call: ${callContact.display}`, margin + 10, yPos);
+              yPos += 6;
+            }
+
+            if (whatsappContact) {
+              pdf.text(`WhatsApp: ${whatsappContact.display}`, margin + 10, yPos);
+              yPos += 6;
+            }
+
+            if (!callContact && !whatsappContact) {
+              pdf.text('No phone listed.', margin + 10, yPos);
+              yPos += 6;
+            }
+            yPos += 2;
           });
         } else {
           pdf.text('No members listed.', margin + 5, yPos);
@@ -228,41 +271,39 @@ function DirectoryContent() {
 
         if (yPos > pageHeight - 40) { pdf.addPage(); addPageFooter(); yPos = 30; }
 
-        if (family.primaryMobile) {
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Primary Mobile:', margin, yPos);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(family.primaryMobile, margin + 40, yPos);
-          yPos += 10;
-        }
-
         // UPDATED: Combined Current Address Logic
         const fullCurrentAddress = [family.currentAddress, family.currentMapAddress].filter(Boolean).join(', ');
-        if (fullCurrentAddress) {
+        const fullNativeAddress = [family.nativeAddress, family.nativeMapAddress].filter(Boolean).join(', ');
+        if (fullCurrentAddress || fullNativeAddress) {
           pdf.setFont('helvetica', 'bold');
-          pdf.text('Current Address:', margin, yPos);
+          pdf.text('Address:', margin, yPos);
           pdf.setFont('helvetica', 'normal');
           yPos += 7;
+        }
+
+        if (fullCurrentAddress) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Current:', margin + 5, yPos);
+          pdf.setFont('helvetica', 'normal');
+          yPos += 6;
           const addressLines = pdf.splitTextToSize(fullCurrentAddress, contentWidth - 5);
           addressLines.forEach((line: string) => {
             if (yPos > pageHeight - 40) { pdf.addPage(); addPageFooter(); yPos = 30; }
-            pdf.text(line, margin + 5, yPos);
+            pdf.text(line, margin + 10, yPos);
             yPos += 6;
           });
           yPos += 5;
         }
 
-        // UPDATED: Combined Native Address Logic
-        const fullNativeAddress = [family.nativeAddress, family.nativeMapAddress].filter(Boolean).join(', ');
         if (fullNativeAddress) {
           pdf.setFont('helvetica', 'bold');
-          pdf.text('Native Address:', margin, yPos);
+          pdf.text('Native:', margin + 5, yPos);
           pdf.setFont('helvetica', 'normal');
-          yPos += 7;
+          yPos += 6;
           const nativeLines = pdf.splitTextToSize(fullNativeAddress, contentWidth - 5);
           nativeLines.forEach((line: string) => {
             if (yPos > pageHeight - 40) { pdf.addPage(); addPageFooter(); yPos = 30; }
-            pdf.text(line, margin + 5, yPos);
+            pdf.text(line, margin + 10, yPos);
             yPos += 6;
           });
           yPos += 5;

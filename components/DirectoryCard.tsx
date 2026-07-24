@@ -1,18 +1,16 @@
 'use client';
 import { motion, PanInfo } from 'framer-motion';
-import { Phone, MapPin, Edit, FileText, Share2, Loader2, Home, HeartHandshake, Users, X, Clock } from 'lucide-react';
+import { Phone, MapPin, Edit, FileText, Share2, Loader2, Home, HeartHandshake, Users, X, Clock, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { logActivity } from '@/lib/logger';
 import { getBase64ImageFromUrl } from '@/lib/imageUtils';
+import { getMemberCallContact, getMemberWhatsAppContact, PhoneContactInput } from '@/lib/phoneUtils';
 
-export interface Individual {
+export interface Individual extends PhoneContactInput {
   name: string;
-  mobile?: string;
-  personalMobile?: string;
-  phone?: string;
   relationship?: string;
   bloodGroup?: string;
   tags?: string[];
@@ -39,6 +37,10 @@ export interface MemberProps {
   homeAssembly?: string;
   commendedAssembly?: string;
   primaryMobile?: string;
+  primaryCallCountryCode?: string;
+  primaryCallPhone?: string;
+  primaryWhatsAppCountryCode?: string;
+  primaryWhatsAppPhone?: string;
   photoUrl?: string;
   photoBase64?: string;
   status?: string;
@@ -53,7 +55,7 @@ export default function DirectoryCard({
   id = '', familyName = 'Unknown', members = [], 
   currentAddress = '', currentMapAddress = '', currentLat = null, currentLng = null, currentCoordinates = null, 
   nativeAddress = '', nativeMapAddress = '', nativeLat = null, nativeLng = null, nativeCoordinates = null,
-  homeAssembly = '', commendedAssembly = '', primaryMobile = '', photoUrl = '', photoBase64 = '',
+  homeAssembly = '', commendedAssembly = '', primaryMobile = '', primaryCallCountryCode = '', primaryCallPhone = '', primaryWhatsAppCountryCode = '', primaryWhatsAppPhone = '', photoUrl = '', photoBase64 = '',
   status = 'Active', notes = '', lastEdited = new Date().toISOString(), hasPendingEdit = false,
   onSwipeLeft, onSwipeRight
 }: MemberProps) {
@@ -96,10 +98,24 @@ export default function DirectoryCard({
   const fullNativeAddress = [nativeAddress, nativeMapAddress].filter(Boolean).join(', ');
 
   // GPS FALLBACK LOGIC (Handles new schema and old schema)
-  const cLat = currentLat || currentCoordinates?.lat;
-  const cLng = currentLng || currentCoordinates?.lng;
-  const nLat = nativeLat || nativeCoordinates?.lat;
-  const nLng = nativeLng || nativeCoordinates?.lng;
+  const cLat = currentLat ?? currentCoordinates?.lat;
+  const cLng = currentLng ?? currentCoordinates?.lng;
+  const nLat = nativeLat ?? nativeCoordinates?.lat;
+  const nLng = nativeLng ?? nativeCoordinates?.lng;
+
+  const familyPhoneFallback = {
+    primaryCallCountryCode,
+    primaryCallPhone,
+    primaryWhatsAppCountryCode,
+    primaryWhatsAppPhone,
+    primaryMobile,
+  };
+
+  const memberContactRows = members.map((member) => ({
+    member,
+    callContact: getMemberCallContact(member, familyPhoneFallback),
+    whatsappContact: getMemberWhatsAppContact(member, familyPhoneFallback),
+  }));
 
   const handleSharePDF = async () => {
     setIsSharing(true);
@@ -175,25 +191,6 @@ export default function DirectoryCard({
         yPos += printHeight + 12;
       }
 
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Family Members:', margin, yPos);
-      pdf.setFont('helvetica', 'normal');
-      yPos += 7;
-
-      if (members.length > 0) {
-        members.forEach((member: Individual) => {
-          const memberText = `• ${member.name} ${member.mobile ? `(${member.mobile})` : ''}`;
-          if (yPos > pageHeight - 20) { addPageFooter(); pdf.addPage(); yPos = 30; }
-          pdf.text(memberText, margin + 5, yPos);
-          yPos += 6;
-        });
-      } else {
-        pdf.text('No members listed.', margin + 5, yPos);
-        yPos += 6;
-      }
-      yPos += 5;
-
       const addSection = (title: string, content: string, isIndented = false) => {
         if (!content) return;
         if (yPos > pageHeight - 30) { addPageFooter(); pdf.addPage(); yPos = 30; }
@@ -217,10 +214,51 @@ export default function DirectoryCard({
         }
       };
 
-      addSection('Primary Mobile:', primaryMobile || '');
-      // UPDATED to use full combined addresses in the PDF
-      addSection('Current Address:', fullCurrentAddress, true);
-      addSection('Native Address:', fullNativeAddress, true);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Member Contacts:', margin, yPos);
+      pdf.setFont('helvetica', 'normal');
+      yPos += 7;
+
+      if (memberContactRows.length > 0) {
+        memberContactRows.forEach(({ member, callContact, whatsappContact }) => {
+          if (yPos > pageHeight - 24) { addPageFooter(); pdf.addPage(); yPos = 30; }
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(member.name || 'Unnamed Member', margin + 5, yPos);
+          pdf.setFont('helvetica', 'normal');
+          yPos += 6;
+
+          if (callContact) {
+            pdf.text(`Call: ${callContact.display}`, margin + 10, yPos);
+            yPos += 6;
+          }
+
+          if (whatsappContact) {
+            pdf.text(`WhatsApp: ${whatsappContact.display}`, margin + 10, yPos);
+            yPos += 6;
+          }
+
+          if (!callContact && !whatsappContact) {
+            pdf.text('No phone listed.', margin + 10, yPos);
+            yPos += 6;
+          }
+          yPos += 2;
+        });
+      } else {
+        pdf.text('No members listed.', margin + 5, yPos);
+        yPos += 6;
+      }
+      yPos += 5;
+
+      if (fullCurrentAddress || fullNativeAddress) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Address:', margin, yPos);
+        pdf.setFont('helvetica', 'normal');
+        yPos += 7;
+        addSection('Current:', fullCurrentAddress, true);
+        addSection('Native:', fullNativeAddress, true);
+      }
+
       addSection('Home Assembly:', homeAssembly || '');
       addSection('Commended Assembly:', commendedAssembly || '');
       addSection('Additional Info:', notes || '', true);
@@ -353,8 +391,7 @@ export default function DirectoryCard({
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Member Contacts</h3>
               <div className="space-y-3">
-                {members.map((member, index) => {
-                  const memberPhone = member.personalMobile || member.mobile || member.phone;
+                {memberContactRows.map(({ member, callContact, whatsappContact }, index) => {
                   return (
                     <div key={`${member.name}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
@@ -363,11 +400,36 @@ export default function DirectoryCard({
                           {member.relationship && (
                             <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{member.relationship}</p>
                           )}
+                          <div className="mt-2 space-y-1 text-xs font-medium text-slate-500">
+                            {callContact && <p>Call: {callContact.display}</p>}
+                            {whatsappContact && <p>WhatsApp: {whatsappContact.display}</p>}
+                          </div>
                         </div>
-                        {memberPhone ? (
-                          <a href={`tel:${memberPhone}`} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 transition hover:bg-teal-100">
-                            <Phone size={14} /> {memberPhone}
-                          </a>
+                        {callContact || whatsappContact ? (
+                          <div className="flex shrink-0 items-center gap-2">
+                            {callContact && (
+                              <a
+                                href={callContact.telHref}
+                                aria-label={`Call ${member.name}`}
+                                title={`Call ${member.name}`}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700 transition hover:bg-teal-100"
+                              >
+                                <Phone size={18} />
+                              </a>
+                            )}
+                            {whatsappContact && (
+                              <a
+                                href={whatsappContact.whatsappHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`WhatsApp ${member.name}`}
+                                title={`WhatsApp ${member.name}`}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-green-200 bg-green-50 text-green-700 transition hover:bg-green-100"
+                              >
+                                <MessageCircle size={18} />
+                              </a>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-sm text-slate-400">No phone</span>
                         )}
@@ -379,29 +441,13 @@ export default function DirectoryCard({
             </div>
           )}
 
-          {members.length > 0 && (
+          {(fullCurrentAddress || fullNativeAddress) && (
             <div>
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Family Members</h3>
-              <p className="text-slate-800 font-medium leading-relaxed">
-                {members.map(m => m.name).join(', ')}
-              </p>
-            </div>
-          )}
-
-          <div>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Contact Info</h3>
-            <div className="space-y-4 text-slate-700">
-              {primaryMobile && (
-                <div className="flex items-center gap-3">
-                  <Phone size={20} className="text-teal-600 shrink-0" />
-                  <a href={`tel:${primaryMobile}`} className="font-medium hover:text-teal-700">{primaryMobile}</a>
-                </div>
-              )}
-              
-              {/* FIXED LINK AND COMBINED TEXT */}
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Address</h3>
+              <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50 p-4 text-slate-700">
               {fullCurrentAddress && (
                 <a
-                  href={cLat && cLng 
+                  href={cLat != null && cLng != null 
                     ? `https://maps.google.com/?q=${cLat},${cLng}` 
                     : `https://maps.google.com/?q=${encodeURIComponent(fullCurrentAddress)}`}
                   target="_blank"
@@ -416,10 +462,9 @@ export default function DirectoryCard({
                 </a>
               )}
 
-              {/* FIXED LINK AND COMBINED TEXT */}
               {fullNativeAddress && (
                 <a
-                  href={nLat && nLng 
+                  href={nLat != null && nLng != null 
                     ? `https://maps.google.com/?q=${nLat},${nLng}` 
                     : `https://maps.google.com/?q=${encodeURIComponent(fullNativeAddress)}`}
                   target="_blank"
@@ -435,6 +480,7 @@ export default function DirectoryCard({
               )}
             </div>
           </div>
+          )}
 
           {(homeAssembly || commendedAssembly || notes) && (
             <div>

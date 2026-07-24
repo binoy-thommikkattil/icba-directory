@@ -14,7 +14,7 @@ const csp = [
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.gstatic.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com https://firebase.googleapis.com https://securetoken.googleapis.com https://*.firebaseapp.com",
-  "frame-src 'self' https://www.google.com https://www.gstatic.com https://*.firebaseapp.com https://accounts.google.com https://immanuel-assembly.com https://www.immanuel-assembly.com",
+  "frame-src 'self' https://www.google.com https://maps.google.com https://www.gstatic.com https://*.firebaseapp.com https://accounts.google.com https://immanuel-assembly.com https://www.immanuel-assembly.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -31,7 +31,7 @@ export function proxy(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
   
   // Explicitly allow popup communication for Firebase Auth
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');

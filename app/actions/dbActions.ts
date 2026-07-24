@@ -46,6 +46,39 @@ export async function createFamilySubmission(payload: any, token?: string | null
   return { id: docRef.id, success: true };
 }
 
+export async function bulkCreateFamilies(families: any[], token?: string | null) {
+  const admin = await requireAdmin(token);
+  const db = getDb();
+  const batch = db.batch();
+  const timestamp = new Date().toISOString();
+
+  families.forEach((family) => {
+    const docRef = db.collection('members').doc();
+    batch.set(docRef, sanitizeForFirestore({
+      ...family,
+      isPendingCreation: false,
+      hasPendingEdit: false,
+      draftData: null,
+      createdAt: family.createdAt || timestamp,
+      createdBy: admin.uid,
+      lastEdited: family.lastEdited || timestamp,
+      submittedBy: family.submittedBy || admin.profile?.name || admin.email || 'Admin',
+    }));
+  });
+
+  await batch.commit();
+  await db.collection('activity_logs').add({
+    userName: admin.profile?.name || admin.email || 'Admin',
+    userEmail: admin.email || 'No Email',
+    action: 'Bulk Imported Families',
+    details: `Imported ${families.length} families from a spreadsheet`,
+    timestamp,
+  });
+  revalidatePath('/dashboard');
+  revalidatePath('/directory');
+  return { success: true, count: families.length };
+}
+
 export async function updateFamilySubmission(
   familyId: string,
   formData: any,

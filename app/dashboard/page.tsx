@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, History, BookOpen, Music } from 'lucide-react';
+import { Users as UsersIcon, Calendar, ShieldCheck, Loader2, PlusCircle, Droplet, History, BookOpen, Music, Download, FileSpreadsheet } from 'lucide-react';
 // ADDED: where and onSnapshot for our access scanner
-import { collection, query, where, onSnapshot, writeBatch, doc } from 'firebase/firestore';
-import { read, utils as xlsxUtils } from 'xlsx';
-import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { read, utils as xlsxUtils, writeFile } from 'xlsx';
+import { db, auth } from '@/lib/firebase';
+import { bulkCreateFamilies } from '@/app/actions/dbActions';
+import { DEFAULT_COUNTRY_CODE, formatPhoneNumber, normalizeCountryCode } from '@/lib/phoneUtils';
 
 const normalizeHeader = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
@@ -70,6 +72,101 @@ const parseTags = (value: string) => {
     .filter(Boolean);
 };
 
+const BULK_UPLOAD_HEADERS = [
+  'Family Name',
+  'Status',
+  'Primary Call Country Code',
+  'Primary Call Phone',
+  'Primary WhatsApp Country Code',
+  'Primary WhatsApp Phone',
+  'Current Apartment / Building',
+  'Current Pinned Street Address',
+  'Current Google Map Link',
+  'Native Apartment / Building',
+  'Native Pinned Street Address',
+  'Native Google Map Link',
+  'Home Assembly',
+  'Commended Assembly',
+  'Additional Info',
+  'Member Name',
+  'Member Call Country Code',
+  'Member Call Phone',
+  'Member WhatsApp Country Code',
+  'Member WhatsApp Phone',
+  'Blood Group',
+  'Willing To Donate',
+  'Tags',
+];
+
+const BULK_UPLOAD_EXAMPLE_ROW = [
+  'John Family',
+  'Active',
+  '+91',
+  '9876543200',
+  '+91',
+  '9876543200',
+  'Flat 204, Blue Skies Apartments',
+  'Indiranagar, Bengaluru, Karnataka 560038',
+  'https://www.google.com/maps?q=12.9716,77.5946',
+  'Family House, Kottayam',
+  'Kottayam, Kerala',
+  'https://www.google.com/maps?q=9.5916,76.5222',
+  'ICBA Bangalore',
+  'Parent Assembly',
+  'Example notes',
+  'John Doe',
+  '+91',
+  '9876543200',
+  '+91',
+  '9876543205',
+  'O+',
+  'TRUE',
+  'Brothers Meeting, Choir',
+];
+
+const extractLatLngFromMapsLink = (value: string) => {
+  const decodedValue = decodeURIComponent(value || '').trim();
+  if (!decodedValue) return null;
+
+  const patterns = [
+    /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/,
+    /@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
+    /[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/i,
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = decodedValue.match(pattern);
+    if (match) {
+      return { lat: Number(match[1]), lng: Number(match[2]) };
+    }
+  }
+
+  return null;
+};
+
+const extractReadableAddressFromMapsLink = (value: string) => {
+  const decodedValue = decodeURIComponent(value || '').trim();
+  if (!decodedValue) return '';
+
+  try {
+    const parsedUrl = new URL(decodedValue);
+    const queryAddress = parsedUrl.searchParams.get('q') || parsedUrl.searchParams.get('query') || parsedUrl.searchParams.get('destination');
+    if (queryAddress && !extractLatLngFromMapsLink(queryAddress)) {
+      return queryAddress.replace(/\+/g, ' ').trim();
+    }
+
+    const placeMatch = decodedValue.match(/\/place\/([^/@?]+)/i);
+    if (placeMatch?.[1]) {
+      return placeMatch[1].replace(/\+/g, ' ').trim();
+    }
+  } catch {
+    if (!extractLatLngFromMapsLink(decodedValue)) return decodedValue;
+  }
+
+  return '';
+};
+
 const parseRowsFromFile = async (file: File, buffer: ArrayBuffer) => {
   const extension = file.name.split('.').pop()?.toLowerCase();
 
@@ -89,15 +186,28 @@ type ImportFamily = {
   familyName: string;
   status: string;
   primaryMobile: string;
+  primaryCallCountryCode: string;
+  primaryCallPhone: string;
+  primaryWhatsAppCountryCode: string;
+  primaryWhatsAppPhone: string;
   currentAddress: string;
+  currentMapAddress: string;
+  currentLat: number | null;
+  currentLng: number | null;
   nativeAddress: string;
+  nativeMapAddress: string;
+  nativeLat: number | null;
+  nativeLng: number | null;
   homeAssembly: string;
   commendedAssembly: string;
   notes: string;
   isPendingCreation: boolean;
   members: Array<{
     name: string;
-    mobile: string;
+    callCountryCode: string;
+    callPhone: string;
+    whatsappCountryCode: string;
+    whatsappPhone: string;
     tags: string[];
     bloodGroup: string;
     willingToDonate: boolean;
@@ -168,6 +278,14 @@ export default function Dashboard() {
 
   if (loading || !user) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-teal-600" size={32} /></div>;
 
+  const handleDownloadBulkTemplate = () => {
+    const worksheet = xlsxUtils.aoa_to_sheet([BULK_UPLOAD_HEADERS, BULK_UPLOAD_EXAMPLE_ROW]);
+    worksheet['!cols'] = BULK_UPLOAD_HEADERS.map(() => ({ wch: 28 }));
+    const workbook = xlsxUtils.book_new();
+    xlsxUtils.book_append_sheet(workbook, worksheet, 'Members');
+    writeFile(workbook, 'icba-member-bulk-upload-template.xlsx');
+  };
+
   const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -195,20 +313,47 @@ export default function Dashboard() {
           return String(row[index] || '').trim();
         };
 
+        const getFirstCellValue = (row: string[], keys: string[]) => {
+          for (const key of keys) {
+            const value = getCellValue(row, key);
+            if (value) return value;
+          }
+          return '';
+        };
+
         const families: ImportFamily[] = [];
 
         for (const row of parsedRows.slice(1)) {
-          const familyName = getCellValue(row as string[], 'Family Name');
+          const familyName = getFirstCellValue(row as string[], ['Family Name', 'FamilyName']);
           if (!familyName) continue;
 
           let family = families.find(item => item.familyName === familyName);
           if (!family) {
+            const currentMapLink = getFirstCellValue(row as string[], ['Current Google Map Link', 'Current Map Link']);
+            const nativeMapLink = getFirstCellValue(row as string[], ['Native Google Map Link', 'Native Map Link']);
+            const currentCoordinates = extractLatLngFromMapsLink(currentMapLink);
+            const nativeCoordinates = extractLatLngFromMapsLink(nativeMapLink);
+            const primaryCallCountryCode = normalizeCountryCode(getFirstCellValue(row as string[], ['Primary Call Country Code', 'Call Country Code']) || DEFAULT_COUNTRY_CODE);
+            const primaryCallPhone = getFirstCellValue(row as string[], ['Primary Call Phone', 'Primary Phone']);
+            const primaryWhatsAppCountryCode = normalizeCountryCode(getFirstCellValue(row as string[], ['Primary WhatsApp Country Code', 'WhatsApp Country Code']) || primaryCallCountryCode);
+            const primaryWhatsAppPhone = getFirstCellValue(row as string[], ['Primary WhatsApp Phone', 'Primary WhatsApp']) || primaryCallPhone;
+
             family = {
               familyName,
               status: getCellValue(row as string[], 'Status') || 'Active',
-              primaryMobile: getCellValue(row as string[], 'Mobile Number') || getCellValue(row as string[], 'Mobile') || '',
-              currentAddress: getCellValue(row as string[], 'Current Address') || '',
-              nativeAddress: getCellValue(row as string[], 'Native Address') || '',
+              primaryMobile: formatPhoneNumber(primaryCallCountryCode, primaryCallPhone),
+              primaryCallCountryCode,
+              primaryCallPhone,
+              primaryWhatsAppCountryCode,
+              primaryWhatsAppPhone,
+              currentAddress: getFirstCellValue(row as string[], ['Current Apartment / Building', 'Current Address']) || '',
+              currentMapAddress: getFirstCellValue(row as string[], ['Current Pinned Street Address', 'Current Map Address']) || extractReadableAddressFromMapsLink(currentMapLink),
+              currentLat: currentCoordinates?.lat ?? null,
+              currentLng: currentCoordinates?.lng ?? null,
+              nativeAddress: getFirstCellValue(row as string[], ['Native Apartment / Building', 'Native Address']) || '',
+              nativeMapAddress: getFirstCellValue(row as string[], ['Native Pinned Street Address', 'Native Map Address']) || extractReadableAddressFromMapsLink(nativeMapLink),
+              nativeLat: nativeCoordinates?.lat ?? null,
+              nativeLng: nativeCoordinates?.lng ?? null,
               homeAssembly: getCellValue(row as string[], 'Home Assembly') || '',
               commendedAssembly: getCellValue(row as string[], 'Commended Assembly') || '',
               notes: getCellValue(row as string[], 'Additional Info') || '',
@@ -221,26 +366,40 @@ export default function Dashboard() {
           const memberName = getCellValue(row as string[], 'Member Name');
           if (!memberName) continue;
 
+          const memberCallCountryCode = normalizeCountryCode(getFirstCellValue(row as string[], ['Member Call Country Code', 'Call Country Code']) || family.primaryCallCountryCode || DEFAULT_COUNTRY_CODE);
+          const memberCallPhone = getFirstCellValue(row as string[], ['Member Call Phone', 'Call Phone']);
+          const memberWhatsAppCountryCode = normalizeCountryCode(getFirstCellValue(row as string[], ['Member WhatsApp Country Code', 'WhatsApp Country Code']) || memberCallCountryCode);
+          const memberWhatsAppPhone = getFirstCellValue(row as string[], ['Member WhatsApp Phone', 'WhatsApp Phone']) || memberCallPhone;
+
           family.members.push({
             name: memberName,
-            mobile: getCellValue(row as string[], 'Mobile Number') || getCellValue(row as string[], 'Mobile') || '',
+            callCountryCode: memberCallCountryCode,
+            callPhone: memberCallPhone,
+            whatsappCountryCode: memberWhatsAppCountryCode,
+            whatsappPhone: memberWhatsAppPhone,
             tags: parseTags(getCellValue(row as string[], 'Tags')),
             bloodGroup: getCellValue(row as string[], 'Blood Group') || '',
             willingToDonate: parseBoolean(getCellValue(row as string[], 'Willing To Donate'))
           });
+
+          if (family.members.length === 1 && !family.primaryCallPhone && memberCallPhone) {
+            family.primaryCallCountryCode = memberCallCountryCode;
+            family.primaryCallPhone = memberCallPhone;
+            family.primaryWhatsAppCountryCode = memberWhatsAppCountryCode;
+            family.primaryWhatsAppPhone = memberWhatsAppPhone;
+            family.primaryMobile = formatPhoneNumber(memberCallCountryCode, memberCallPhone);
+          }
         }
 
         if (families.length === 0) {
           throw new Error('No valid family rows could be grouped from the file.');
         }
 
-        const batch = writeBatch(db);
-        families.forEach(family => {
-          const docRef = doc(collection(db, 'members'));
-          batch.set(docRef, family);
-        });
-
-        await batch.commit();
+        if (!auth.currentUser) {
+          throw new Error('You are not signed in. Please log in again.');
+        }
+        const token = await auth.currentUser.getIdToken(true);
+        await bulkCreateFamilies(families, token);
 
         event.target.value = '';
         alert(`Success! Grouped and uploaded ${families.length} distinct families.`);
@@ -279,7 +438,7 @@ export default function Dashboard() {
 
         <Link href="/meetings" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
           <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition"><Calendar size={24} /></div>
-          <div><h2 className="font-bold text-slate-800 text-lg">Meetings</h2><p className="text-sm text-slate-500">Meeting schedule and links</p></div>
+          <div><h2 className="font-bold text-slate-800 text-lg">Meetings</h2><p className="text-sm text-slate-500">Service schedule and links</p></div>
         </Link>
 
         <Link href="/prayer" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 transition flex items-center gap-4 group">
@@ -297,7 +456,7 @@ export default function Dashboard() {
           </div>
           <div>
             <h2 className="font-bold text-slate-800 text-lg">Songbook</h2>
-            <p className="text-sm text-slate-500">Lyrics, translations, and meaning</p>
+            <p className="text-sm text-slate-500">Lyrics, translations, and chords</p>
           </div>
         </Link>
 
@@ -345,10 +504,15 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-slate-700 text-amber-400 rounded-xl flex items-center justify-center group-hover:scale-110 transition"><ShieldCheck size={24} /></div>
               <div><h2 className="font-bold text-white text-lg">Pending Approvals</h2><p className="text-sm text-slate-400">Review users, new families & edits</p></div>
             </Link>
-            <label className="bg-slate-800 text-white p-4 rounded-2xl shadow-md font-bold hover:bg-slate-900 transition flex items-center justify-center w-full mb-4 cursor-pointer">
-              <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
-              📊 Bulk Upload Members (CSV/Excel)
-            </label>
+            <div className="grid gap-3">
+              <button type="button" onClick={handleDownloadBulkTemplate} className="bg-white text-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 font-bold hover:border-teal-400 transition flex items-center justify-center w-full">
+                <Download size={18} className="mr-2" /> Download Bulk Upload Template
+              </button>
+              <label className="bg-slate-800 text-white p-4 rounded-2xl shadow-md font-bold hover:bg-slate-900 transition flex items-center justify-center w-full cursor-pointer">
+                <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+                <FileSpreadsheet size={18} className="mr-2" /> Bulk Upload Members (CSV/Excel)
+              </label>
+            </div>
             <Link href="/manage-users" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 transition flex items-center gap-4 group">
               <div className="w-12 h-12 bg-slate-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-50 transition"><UsersIcon size={24} /></div>
               <div><h2 className="font-bold text-slate-800 text-lg">Manage Users</h2><p className="text-sm text-slate-500">View accounts and revoke access</p></div>

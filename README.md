@@ -104,6 +104,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # GOOGLE MAPS CONFIG
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=your_optional_google_maps_map_id
 
 # GEMINI AI CONFIG (Note: NOT prefixed with NEXT_PUBLIC_ for security)
 GEMINI_API_KEY=your_gemini_api_key
@@ -147,24 +148,37 @@ For security, anyone who signs up automatically receives a `pending` role. You m
 
 ---
 
-## 📊 CSV Bulk Upload Format
+## 📊 Bulk Upload Format
 
-To import existing members via the Admin Dashboard, your CSV file **must** contain exactly 12 columns in the following order. Save your spreadsheet as a Comma Separated Values (`.csv`) file. To group multiple people into the same family card, ensure they have the exact same `Mobile` (Primary Mobile) number.
+Admins can download a ready-to-fill Excel template from the Admin Dashboard, then upload either `.xlsx`, `.xls`, or `.csv`. The first row is the header row and the second row contains example data. To group multiple people into the same family card, repeat the same `Family Name` on consecutive member rows.
 
 | Col | Name | Description | Required? |
 | :--- | :--- | :--- | :--- |
-| 1 | `FamilyName` | The display name for the household | **Yes** |
-| 2 | `Mobile` | **Primary Family Mobile**. Groups members together. | **Yes** |
-| 3 | `CurrentAddress` | Residential address | No |
-| 4 | `NativeAddress` | Hometown or native address | No |
-| 5 | `HomeAssembly` | Current church branch/assembly | No |
-| 6 | `CommendedAssembly`| Originating commended assembly | No |
-| 7 | `Notes` | General household notes | No |
-| 8 | `MemberName` | The individual's full name | **Yes** |
-| 9 | `BloodGroup` | e.g., A+, O-, AB+ | No |
-| 10| `WillingToDonate`| `TRUE` or `FALSE` | No |
-| 11| `Tags` | Comma-separated (e.g., `youth, choir`) | No |
-| 12| `MemberMobile` | The individual's personal mobile number | No |
+| 1 | `Family Name` | The display name for the household | **Yes** |
+| 2 | `Status` | `Active` or `Inactive` | No |
+| 3 | `Primary Call Country Code` | Family primary call country code. Defaults to `+91`. | No |
+| 4 | `Primary Call Phone` | Family primary call phone number | Recommended |
+| 5 | `Primary WhatsApp Country Code` | Family primary WhatsApp country code. Defaults to call country code. | No |
+| 6 | `Primary WhatsApp Phone` | Family primary WhatsApp number. Leave blank if none. | No |
+| 7 | `Current Apartment / Building` | Apartment, flat, floor, or building text | No |
+| 8 | `Current Pinned Street Address` | Readable current street address from map pin | No |
+| 9 | `Current Google Map Link` | Google Maps link or `lat,lng`; coordinates are imported into `currentLat/currentLng` | No |
+| 10 | `Native Apartment / Building` | Native-address apartment/building text | No |
+| 11 | `Native Pinned Street Address` | Readable native street address from map pin | No |
+| 12 | `Native Google Map Link` | Google Maps link or `lat,lng`; coordinates are imported into `nativeLat/nativeLng` | No |
+| 13 | `Home Assembly` | Current church branch/assembly | No |
+| 14 | `Commended Assembly` | Originating commended assembly | No |
+| 15 | `Additional Info` | General household notes | No |
+| 16 | `Member Name` | The individual's full name | **Yes** |
+| 17 | `Member Call Country Code` | Member call country code. Defaults to `+91`. | No |
+| 18 | `Member Call Phone` | Member call phone number | Recommended |
+| 19 | `Member WhatsApp Country Code` | Member WhatsApp country code. Defaults to call country code. | No |
+| 20 | `Member WhatsApp Phone` | Member WhatsApp number; can differ from call phone | No |
+| 21 | `Blood Group` | e.g., A+, O-, AB+ | No |
+| 22 | `Willing To Donate` | `TRUE` or `FALSE` | No |
+| 23 | `Tags` | Comma-separated roles, e.g. `Youth Meeting, Choir` | No |
+
+Member records store call and WhatsApp fields separately: `callCountryCode`, `callPhone`, `whatsappCountryCode`, and `whatsappPhone`. The family-level `primaryMobile` is retained as a display/search string derived from the primary call number.
 
 ---
 
@@ -342,7 +356,7 @@ app/api/*   ─┘
 | Auth | Firebase Authentication | Email/password sign-in; session-cookie exchange in `/api/session` |
 | File Storage | Firebase Storage | Family photos, songbook images |
 | AI | Google Gemini 2.5 Flash (`GEMINI_API_KEY`) | `/api/process-song` OCR + transliteration + translation |
-| Maps (primary) | Google Maps JS API, Places Autocomplete, Geocoding | `MapPicker`, `LocationPicker` |
+| Maps (primary) | Google Maps JS API, Places Autocomplete, Geocoding, optional Advanced Marker map ID | `MapPicker`, `LocationPicker` |
 | Maps (fallback) | OpenStreetMap tiles + Nominatim via `react-leaflet` | `MapPicker` fallback |
 | Hosting | Vercel (implied by `serverExternalPackages` config and Next.js defaults) | App hosting, edge middleware, serverless functions |
 | PWA | Web App Manifest + custom Service Worker | `/manifest.json`, `/sw.js` |

@@ -29,7 +29,37 @@ export function createAdminDbMock(initialState: DocumentState = {}) {
     data: () => data,
   });
 
+  const makeDocRef = (collectionName: string, collectionState: Record<string, any>, requestedDocId?: string) => {
+    const docId = requestedDocId || `${collectionName}-${Object.keys(collectionState).length + 1}`;
+    return {
+      id: docId,
+      set: getCall('set', `${collectionName}/${docId}`, async (payload: any, options?: { merge?: boolean }) => {
+        collectionState[docId] = options?.merge ? { ...(collectionState[docId] || {}), ...payload } : structuredClone(payload);
+      }),
+      update: getCall('update', `${collectionName}/${docId}`, async (payload: any) => {
+        collectionState[docId] = { ...(collectionState[docId] || {}), ...structuredClone(payload) };
+      }),
+      delete: getCall('delete', `${collectionName}/${docId}`, async () => {
+        delete collectionState[docId];
+      }),
+      get: getCall('get', `${collectionName}/${docId}`, async () => makeSnapshot(docId, collectionState[docId])),
+    };
+  };
+
   const db = {
+    batch: vi.fn(() => {
+      const operations: Array<() => Promise<void>> = [];
+      return {
+        set: vi.fn((docRef: { set: (payload: any) => Promise<void> }, payload: any) => {
+          operations.push(() => docRef.set(payload));
+        }),
+        commit: vi.fn(async () => {
+          for (const operation of operations) {
+            await operation();
+          }
+        }),
+      };
+    }),
     collection: vi.fn((collectionName: string) => {
       const collectionState = ensureCollection(collectionName);
       return {
@@ -38,18 +68,7 @@ export function createAdminDbMock(initialState: DocumentState = {}) {
           collectionState[id] = structuredClone(payload);
           return { id };
         }),
-        doc: vi.fn((docId: string) => ({
-          set: getCall('set', `${collectionName}/${docId}`, async (payload: any, options?: { merge?: boolean }) => {
-            collectionState[docId] = options?.merge ? { ...(collectionState[docId] || {}), ...payload } : structuredClone(payload);
-          }),
-          update: getCall('update', `${collectionName}/${docId}`, async (payload: any) => {
-            collectionState[docId] = { ...(collectionState[docId] || {}), ...structuredClone(payload) };
-          }),
-          delete: getCall('delete', `${collectionName}/${docId}`, async () => {
-            delete collectionState[docId];
-          }),
-          get: getCall('get', `${collectionName}/${docId}`, async () => makeSnapshot(docId, collectionState[docId])),
-        })),
+        doc: vi.fn((docId?: string) => makeDocRef(collectionName, collectionState, docId)),
         orderBy: vi.fn((field: string, direction: 'asc' | 'desc' = 'asc') => ({
           limit: vi.fn((count: number) => ({
             get: getCall('get', `${collectionName}:orderBy:${field}:${direction}:limit:${count}`, async () => {

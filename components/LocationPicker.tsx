@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { MapPin, Navigation, Loader2, Map as MapIcon, X, Search } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { MapPin, LocateFixed, Loader2, X, Search } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useJsApiLoader } from '@react-google-maps/api';
 
@@ -10,7 +10,7 @@ const MapPicker = dynamic(() => import('./MapPicker'), {
 });
 
 // CRITICAL: This array must be defined OUTSIDE the component to prevent infinite reloading
-const libraries: any = ['places'];
+const libraries: any = ['places', 'marker'];
 
 interface LocationPickerProps {
   label: string;
@@ -93,6 +93,33 @@ export default function LocationPicker({
     return () => clearTimeout(delayDebounceFn);
   }, [searchInput, isLoaded]);
 
+  const reverseGeocode = useCallback(async (latitude: number, longitude: number) => {
+    if (isLoaded && window.google?.maps?.Geocoder) {
+      const geocoder = new window.google.maps.Geocoder();
+      const googleAddress = await new Promise<string>((resolve) => {
+        geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+          if (status === 'OK' && results && results[0]?.formatted_address) {
+            resolve(results[0].formatted_address);
+            return;
+          }
+          resolve('');
+        });
+      });
+
+      if (googleAddress) return googleAddress;
+    }
+
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await response.json();
+      if (data?.display_name) return data.display_name;
+    } catch (reverseGeocodeError) {
+      console.error('Reverse geocoding failed:', reverseGeocodeError);
+    }
+
+    return 'Selected map pin';
+  }, [isLoaded]);
+
   const handleGetLocation = () => {
     setIsLocating(true);
     setError('');
@@ -103,13 +130,16 @@ export default function LocationPicker({
     }
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        const readableAddress = await reverseGeocode(position.coords.latitude, position.coords.longitude);
         setTempLat(position.coords.latitude);
         setTempLng(position.coords.longitude);
-        setTempMapAddress(`GPS Location (${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)})`);
+        setTempMapAddress(readableAddress);
         setIsLocating(false);
       },
-      () => {
-        setError('Location access denied. Please enable it in your browser.');
+      (locationError) => {
+        setError(locationError.code === locationError.PERMISSION_DENIED
+          ? 'Location access is blocked. Allow location for this site and try again.'
+          : 'Unable to find your current location. Please try again.');
         setIsLocating(false);
       },
       { enableHighAccuracy: true }
@@ -172,36 +202,36 @@ export default function LocationPicker({
 
       <div className="space-y-2">
         <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Apartment, Floor, Building Name</label>
+        <input
+          type="text"
+          value={address}
+          onChange={(e) => onChange({ address: e.target.value, mapAddress, lat, lng })}
+          placeholder="e.g. Flat 204, Blue Skies Apartments..."
+          className="w-full p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none text-sm text-slate-700"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pinned Street Address</label>
         <div className="relative">
           <input
             type="text"
-            value={address}
-            onChange={(e) => onChange({ address: e.target.value, mapAddress, lat, lng })}
-            placeholder="e.g. Flat 204, Blue Skies Apartments..."
-            className="w-full pr-11 p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none text-sm text-slate-700"
+            value={mapAddress}
+            onChange={(e) => onChange({ address, mapAddress: e.target.value, lat, lng })}
+            readOnly={!isAdmin}
+            placeholder={isAdmin ? "Admins can edit this map address directly..." : "Use the map to set this address..."}
+            className={`w-full pr-12 p-2.5 rounded-lg border text-sm outline-none ${isAdmin ? 'border-teal-300 bg-white focus:ring-2 focus:ring-teal-500' : 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'}`}
           />
           <button
             type="button"
             onClick={() => setIsMapOpen(true)}
             title={`Set ${type} address on map`}
             aria-label={`Set ${type} address on map`}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-teal-700 shadow-sm transition hover:bg-teal-50"
+            className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-teal-200 bg-teal-600 text-white shadow-sm transition hover:bg-teal-700"
           >
-            <MapIcon size={15} />
+            <MapPin size={17} />
           </button>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pinned Street Address</label>
-        <input
-          type="text"
-          value={mapAddress}
-          onChange={(e) => onChange({ address, mapAddress: e.target.value, lat, lng })}
-          readOnly={!isAdmin}
-          placeholder={isAdmin ? "Admins can edit this map address directly..." : "Use the map to set this address..."}
-          className={`w-full p-2.5 rounded-lg border text-sm outline-none ${isAdmin ? 'border-teal-300 bg-white focus:ring-2 focus:ring-teal-500' : 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'}`}
-        />
       </div>
 
       {isMapOpen && (
@@ -253,17 +283,25 @@ export default function LocationPicker({
                 <button type="button" onClick={handleManualSearch} disabled={isSearching || !isLoaded} className="bg-teal-600 p-2.5 rounded-lg text-white hover:bg-teal-700 transition shadow-sm">
                   {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
                 </button>
-                <button type="button" onClick={handleGetLocation} className="bg-slate-100 p-2.5 rounded-lg text-slate-700 border hover:bg-slate-200 transition" title="Use my GPS location">
-                  <Navigation size={18} />
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={isLocating}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-white text-blue-600 shadow-md transition hover:bg-blue-50 disabled:opacity-60"
+                  title="Use my GPS location"
+                  aria-label="Use my GPS location"
+                >
+                  {isLocating ? <Loader2 size={18} className="animate-spin" /> : <LocateFixed size={20} />}
                 </button>
               </div>
 
               {error && <p className="text-xs text-amber-600 font-medium bg-amber-50 p-2 rounded border border-amber-100 leading-relaxed">{error}</p>}
               
               {tempMapAddress && (
-                <p className="text-xs text-teal-700 font-medium bg-teal-50 p-2 rounded border border-teal-100">
-                  📍 <strong>Pinned:</strong> {tempMapAddress}
-                </p>
+                <div className="flex items-start gap-2 rounded border border-teal-100 bg-teal-50 p-2 text-xs font-medium text-teal-700">
+                  <MapPin size={14} className="mt-0.5 shrink-0" />
+                  <p><strong>Pinned:</strong> {tempMapAddress}</p>
+                </div>
               )}
 
               <div className="flex-1 w-full bg-slate-100 rounded-xl relative overflow-hidden border">
@@ -281,7 +319,7 @@ export default function LocationPicker({
 
             <div className="p-4 border-t flex justify-end gap-3 bg-slate-50">
               <button type="button" onClick={() => setIsMapOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg">Cancel</button>
-              <button type="button" onClick={handleConfirmMap} disabled={!tempLat} className="px-5 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50 shadow-sm">Confirm Address</button>
+              <button type="button" onClick={handleConfirmMap} disabled={tempLat === null || tempLng === null} className="px-5 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50 shadow-sm">Confirm Address</button>
             </div>
           </div>
         </div>

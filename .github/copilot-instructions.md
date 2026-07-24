@@ -76,6 +76,7 @@ There is only one project. The rules below cover its internal layers.
 - **Server actions:** camelCase verbs — `createFamilySubmission`, `approveFamilyEdit`, `deleteUserAccount`.
 - **Firestore collections:** snake_case plural (`activity_logs`, `prayer_points`) or plain plural (`users`, `members`, `songs`, `notices`, `meetings`).
 - **Fields:** camelCase (`isPendingCreation`, `hasPendingEdit`, `draftData`, `songNumber`, `submittedBy`).
+- **Member phone fields:** use separate call and WhatsApp fields on each member (`callCountryCode`, `callPhone`, `whatsappCountryCode`, `whatsappPhone`) plus primary family mirrors (`primaryCallCountryCode`, `primaryCallPhone`, `primaryWhatsAppCountryCode`, `primaryWhatsAppPhone`). `primaryMobile` is only a derived display/search string.
 - **Env vars:** `NEXT_PUBLIC_*` for browser-safe values; unprefixed (`GEMINI_API_KEY`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT`) for server-only secrets. When adding a new env var, document it in [.env.example](../.env.example) at the same time.
 
 ### Path aliases
@@ -96,6 +97,7 @@ The codebase does **not** use a DI container. Wire dependencies by direct import
 
 - **Reads from client components:** use the Firebase client SDK (`onSnapshot`, `getDocs`) directly with `db` from `@/lib/firebase`. Security Rules do the enforcement.
 - **Writes:** call a server action from [app/actions/dbActions.ts](../app/actions/dbActions.ts). If a needed action does not exist, add one there — do not create parallel write paths in components.
+- **Bulk imports:** admin dashboard spreadsheet uploads call the `bulkCreateFamilies` server action. Keep template/parser changes aligned with [README.md](../README.md) and do not write imported families directly from the client SDK.
 - **Every new server action must** accept an optional trailing `token?: string | null` parameter, start with `await requireUser(token)` or `await requireAdmin(token)`, then call `getAdminDb()`, then `revalidatePath(...)` for any pages that render the mutated data. Every client caller must obtain the token via `await auth.currentUser?.getIdToken()` and pass it as the last positional argument.
 - **Timestamps:** use `new Date().toISOString()` — the codebase stores ISO strings, not Firestore `Timestamp` objects.
 - **Audit trail:** admin-only mutations append a document to `activity_logs` with `{ userName, userEmail, action, details, timestamp }`. Preserve this convention.
@@ -117,6 +119,7 @@ The codebase does **not** use a DI container. Wire dependencies by direct import
 
 - Never log secrets or session cookies.
 - The CSP in [proxy.ts](../proxy.ts) is strict; if you add a new script host, update the CSP explicitly.
+- Google Maps embeds require `https://maps.google.com` in `frame-src`, and location picking requires `geolocation=(self)` in `Permissions-Policy`.
 - Never widen Firestore/Storage rules from the README defaults without discussing it.
 - Never move `GEMINI_API_KEY` (or any unprefixed secret) into a `NEXT_PUBLIC_*` variable.
 

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
 import { ArrowLeft, Droplet, Phone, MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getMemberCallContact, getMemberWhatsAppContact } from '@/lib/phoneUtils';
 
 export default function BloodRegistryPage() {
   const { user, loading: authLoading } = useAuth();
@@ -35,7 +36,15 @@ export default function BloodRegistryPage() {
     families.forEach(family => {
       family.members?.forEach((ind: any) => {
         if (ind.bloodGroup && ind.willingToDonate) {
-          list.push({ ...ind, familyName: family.familyName, primaryMobile: family.primaryMobile });
+          list.push({
+            ...ind,
+            familyName: family.familyName,
+            primaryMobile: family.primaryMobile,
+            primaryCallCountryCode: family.primaryCallCountryCode,
+            primaryCallPhone: family.primaryCallPhone,
+            primaryWhatsAppCountryCode: family.primaryWhatsAppCountryCode,
+            primaryWhatsAppPhone: family.primaryWhatsAppPhone,
+          });
         }
       });
     });
@@ -87,8 +96,15 @@ export default function BloodRegistryPage() {
         )}
 
         {filteredDonors.map((donor, idx) => {
-          const rawPhone = donor.mobile || donor.primaryMobile;
-          const sanitizedPhone = rawPhone?.replace(/\D/g, '');
+          const familyPhoneFallback = {
+            primaryCallCountryCode: donor.primaryCallCountryCode,
+            primaryCallPhone: donor.primaryCallPhone,
+            primaryWhatsAppCountryCode: donor.primaryWhatsAppCountryCode,
+            primaryWhatsAppPhone: donor.primaryWhatsAppPhone,
+            primaryMobile: donor.primaryMobile,
+          };
+          const callContact = getMemberCallContact(donor, familyPhoneFallback);
+          const whatsappContact = getMemberWhatsAppContact(donor, familyPhoneFallback);
 
           return (
             <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -102,14 +118,18 @@ export default function BloodRegistryPage() {
                 </span>
               </div>
 
-              {donor.primaryMobile && (
+              {(callContact || whatsappContact) && (
                 <div className="flex gap-3 pt-4 border-t border-slate-100">
-                  <a href={`tel:${sanitizedPhone}`} className="flex-1 flex justify-center items-center bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition">
-                    <Phone size={16} className="mr-2" /> Call
-                  </a>
-                  <a href={`https://wa.me/${sanitizedPhone}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex justify-center items-center bg-green-50 text-green-700 border border-green-200 py-2.5 rounded-xl font-bold hover:bg-green-100 transition">
-                    <MessageCircle size={16} className="mr-2" /> WhatsApp
-                  </a>
+                  {callContact && (
+                    <a href={callContact.telHref} className="flex-1 flex justify-center items-center bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition" aria-label={`Call ${donor.name}`}>
+                      <Phone size={16} className="mr-2" /> Call
+                    </a>
+                  )}
+                  {whatsappContact && (
+                    <a href={whatsappContact.whatsappHref} target="_blank" rel="noopener noreferrer" className="flex-1 flex justify-center items-center bg-green-50 text-green-700 border border-green-200 py-2.5 rounded-xl font-bold hover:bg-green-100 transition" aria-label={`WhatsApp ${donor.name}`}>
+                      <MessageCircle size={16} className="mr-2" /> WhatsApp
+                    </a>
+                  )}
                 </div>
               )}
             </div>

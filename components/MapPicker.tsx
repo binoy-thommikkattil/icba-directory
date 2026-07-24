@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { useJsApiLoader, GoogleMap, Marker as GoogleMarker } from '@react-google-maps/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useJsApiLoader, GoogleMap, useGoogleMap } from '@react-google-maps/api';
+import { MapPin } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -26,7 +27,7 @@ if (typeof window !== 'undefined') {
 }
 
 // CRITICAL: Must exactly match the libraries array in LocationPicker.tsx
-const libraries: any = ['places'];
+const libraries: any = ['places', 'marker'];
 
 interface MapPickerProps {
   initialLat: number | null;
@@ -37,7 +38,7 @@ interface MapPickerProps {
 function MapUpdater({ lat, lng }: { lat: number | null, lng: number | null }) {
   const map = useMap();
   useEffect(() => {
-    if (lat && lng) {
+    if (lat !== null && lng !== null) {
       map.flyTo([lat, lng], 16, { animate: true, duration: 1 });
     }
   }, [lat, lng, map]);
@@ -51,18 +52,44 @@ function LeafletEvents({ onPinDrop }: { onPinDrop: (lat: number, lng: number, ad
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await res.json();
-        onPinDrop(lat, lng, data.display_name || `Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        onPinDrop(lat, lng, data.display_name || 'Selected map pin');
       } catch (err) {
-        onPinDrop(lat, lng, `Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        onPinDrop(lat, lng, 'Selected map pin');
       }
     },
   });
   return null;
 }
 
+function AdvancedGoogleMarker({ lat, lng }: { lat: number; lng: number }) {
+  const map = useGoogleMap();
+  const markerRef = useRef<any>(null);
+
+  useEffect(() => {
+    const AdvancedMarkerElement = (window.google?.maps as any)?.marker?.AdvancedMarkerElement;
+    if (!map || !AdvancedMarkerElement) return;
+
+    markerRef.current = new AdvancedMarkerElement({
+      map,
+      position: { lat, lng },
+      title: 'Pinned location',
+    });
+
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.map = null;
+        markerRef.current = null;
+      }
+    };
+  }, [map, lat, lng]);
+
+  return null;
+}
+
 export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPickerProps) {
   const defaultLat = initialLat || 20.5937;
   const defaultLng = initialLng || 78.9629;
+  const googleMapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || '';
   
   const [mapProvider, setMapProvider] = useState<'google' | 'leaflet'>('google');
 
@@ -93,7 +120,7 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
       if (status === 'OK' && results && results[0]) {
         onPinDrop(lat, lng, results[0].formatted_address);
       } else {
-        onPinDrop(lat, lng, `Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        onPinDrop(lat, lng, 'Selected map pin');
       }
     });
   }, [onPinDrop]);
@@ -102,7 +129,7 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
     return (
       <MapContainer center={[defaultLat, defaultLng]} zoom={initialLat ? 16 : 5} style={{ height: '100%', width: '100%', zIndex: 10 }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {initialLat && initialLng && <Marker position={[initialLat, initialLng]} />}
+        {initialLat !== null && initialLng !== null && <Marker position={[initialLat, initialLng]} />}
         <LeafletEvents onPinDrop={onPinDrop} />
         <MapUpdater lat={initialLat} lng={initialLng} />
       </MapContainer>
@@ -112,14 +139,25 @@ export default function MapPicker({ initialLat, initialLng, onPinDrop }: MapPick
   if (!isLoaded) return <div className="h-full w-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400">Loading Map...</div>;
 
   return (
-    <GoogleMap
-      mapContainerStyle={{ width: '100%', height: '100%' }}
-      center={{ lat: defaultLat, lng: defaultLng }}
-      zoom={initialLat ? 16 : 5}
-      onClick={handleGoogleClick}
-      options={{ streetViewControl: false, mapTypeControl: false }}
-    >
-      {initialLat && initialLng && <GoogleMarker position={{ lat: initialLat, lng: initialLng }} />}
-    </GoogleMap>
+    <div className="relative h-full w-full">
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={{ lat: defaultLat, lng: defaultLng }}
+        zoom={initialLat !== null && initialLng !== null ? 16 : 5}
+        onClick={handleGoogleClick}
+        options={{
+          streetViewControl: false,
+          mapTypeControl: false,
+          ...(googleMapId ? { mapId: googleMapId } : {}),
+        }}
+      >
+        {initialLat !== null && initialLng !== null && googleMapId && <AdvancedGoogleMarker lat={initialLat} lng={initialLng} />}
+      </GoogleMap>
+      {initialLat !== null && initialLng !== null && !googleMapId && (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-full rounded-full bg-white p-1 text-red-600 shadow-lg ring-2 ring-white">
+          <MapPin size={28} fill="currentColor" />
+        </div>
+      )}
+    </div>
   );
 }

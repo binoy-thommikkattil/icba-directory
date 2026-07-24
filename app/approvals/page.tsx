@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 // ADDED Phone and Mail icons
 import { ArrowLeft, CheckCircle, XCircle, UserPlus, Edit3, ShieldAlert, Loader2, Search, X, ArrowRight, MapPin, Phone, Mail } from 'lucide-react';
+import { formatPhoneNumber } from '@/lib/phoneUtils';
 
 // --- THE DIFF VIEWER COMPONENT ---
 const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
@@ -85,7 +86,10 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
     // 1. Check standard text fields (ADDED MAP ADDRESSES)
     const fieldsToTrack = [
       { key: 'familyName', label: 'Primary Member (Family Name)' },
-      { key: 'primaryMobile', label: 'Primary Mobile' },
+      { key: 'primaryCallCountryCode', label: 'Primary Call Country Code' },
+      { key: 'primaryCallPhone', label: 'Primary Call Phone' },
+      { key: 'primaryWhatsAppCountryCode', label: 'Primary WhatsApp Country Code' },
+      { key: 'primaryWhatsAppPhone', label: 'Primary WhatsApp Phone' },
       { key: 'currentAddress', label: 'Current Address' },
       { key: 'currentMapAddress', label: 'Current Map Address' },
       { key: 'nativeAddress', label: 'Native Address' },
@@ -153,7 +157,10 @@ const DiffViewer = ({ original, draft }: { original: any, draft: any }) => {
 
         const trackedFields = [
           { key: 'name', label: 'Name' },
-          { key: 'mobile', label: 'Mobile' },
+          { key: 'callCountryCode', label: 'Call Country Code' },
+          { key: 'callPhone', label: 'Call Phone' },
+          { key: 'whatsappCountryCode', label: 'WhatsApp Country Code' },
+          { key: 'whatsappPhone', label: 'WhatsApp Phone' },
           { key: 'bloodGroup', label: 'Blood Group' },
           { key: 'willingToDonate', label: 'Willing to Donate' },
           { key: 'relationship', label: 'Relationship' },
@@ -457,7 +464,8 @@ export default function ApprovalsPage() {
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Contact Info</h3>
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 text-sm">
                       <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Status</span><span className="text-slate-600">{activeData.status || 'Active'}</span></div>
-                      <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Mobile</span><span className="text-slate-600">{activeData.primaryMobile || '-'}</span></div>
+                      <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">Call</span><span className="text-slate-600">{formatPhoneNumber(activeData.primaryCallCountryCode, activeData.primaryCallPhone) || '-'}</span></div>
+                      <div className="flex border-b border-slate-100 pb-2"><span className="font-bold text-slate-700 w-1/3">WhatsApp</span><span className="text-slate-600">{formatPhoneNumber(activeData.primaryWhatsAppCountryCode, activeData.primaryWhatsAppPhone) || '-'}</span></div>
 
                       {/* Combines Manual Address + Map Address and checks for Lat/Lng */}
                       <div className="flex border-b border-slate-100 pb-2">
@@ -484,7 +492,7 @@ export default function ApprovalsPage() {
                       {activeData.members?.map((m: any, i: number) => (
                         <div key={i} className="pb-3 border-b border-slate-100 last:border-0 last:pb-0">
                           <p className="font-bold text-slate-800 text-base">{m.name} {i === 0 && <span className="text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full ml-2 uppercase align-middle">Primary</span>}</p>
-                          <p className="text-slate-500 mt-1">Mobile: {m.mobile || 'N/A'} • Blood: {m.bloodGroup || 'N/A'}</p>
+                          <p className="text-slate-500 mt-1">Call: {formatPhoneNumber(m.callCountryCode, m.callPhone) || 'N/A'} • WhatsApp: {formatPhoneNumber(m.whatsappCountryCode, m.whatsappPhone) || 'N/A'} • Blood: {m.bloodGroup || 'N/A'}</p>
                         </div>
                       ))}
                     </div>

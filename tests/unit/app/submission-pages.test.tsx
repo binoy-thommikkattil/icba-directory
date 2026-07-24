@@ -157,7 +157,7 @@ describe('submission workflows', () => {
     render(<AddFamily />);
     fireEvent.submit(document.querySelector('form') as HTMLFormElement);
 
-    expect(window.alert).toHaveBeenCalledWith('The Primary Member must have a full name and mobile number.');
+    expect(window.alert).toHaveBeenCalledWith('The Primary Member must have a full name and call phone number.');
     expect(mocks.createFamilySubmission).not.toHaveBeenCalled();
   });
 
@@ -166,19 +166,23 @@ describe('submission workflows', () => {
 
     render(<AddFamily />);
     await user.type(screen.getByPlaceholderText(/john mark/i), 'John Member');
-    await user.type(screen.getByPlaceholderText(/9876543210/i), '9876543210');
+    await user.type(screen.getByLabelText(/primary member call phone number/i), '9876543210');
     await user.type(screen.getByPlaceholderText('Current Address & Location *'), '123 Main Street');
     await user.click(screen.getByRole('button', { name: /submit to admin/i }));
 
     await waitFor(() => expect(mocks.createFamilySubmission).toHaveBeenCalledWith(expect.objectContaining({
       familyName: 'John Member',
-      primaryMobile: '9876543210',
+      primaryMobile: '+91 9876543210',
+      primaryCallCountryCode: '+91',
+      primaryCallPhone: '9876543210',
+      primaryWhatsAppCountryCode: '+91',
+      primaryWhatsAppPhone: '',
       currentAddress: '123 Main Street',
       submittedBy: 'Approved Member',
       isPendingCreation: true,
       hasPendingEdit: false,
       draftData: null,
-      members: [expect.objectContaining({ name: 'John Member', mobile: '9876543210', tags: [] })],
+      members: [expect.objectContaining({ name: 'John Member', callCountryCode: '+91', callPhone: '9876543210', whatsappCountryCode: '+91', whatsappPhone: '', tags: [] })],
     }), 'fresh-token'));
     expect(window.alert).toHaveBeenCalledWith('Details submitted! An admin will review and approve your submission shortly.');
     expect(mocks.routerPush).toHaveBeenCalledWith('/dashboard');
@@ -194,8 +198,10 @@ describe('submission workflows', () => {
     render(<AddFamily />);
     await user.selectOptions(screen.getByDisplayValue('Active'), 'Inactive');
     await user.type(screen.getByPlaceholderText(/john mark/i), 'Admin Family');
-    await user.type(screen.getByPlaceholderText(/9876543210/i), '9876500000');
-    await user.selectOptions(screen.getByRole('listbox'), ['Choir', 'Sunday School']);
+    await user.type(screen.getByLabelText(/primary member call phone number/i), '9876500000');
+    await user.click(screen.getByRole('button', { name: /select tags \/ roles/i }));
+    await user.click(screen.getByRole('option', { name: 'Choir' }));
+    await user.click(screen.getByRole('option', { name: 'Sunday School' }));
     await user.type(screen.getByPlaceholderText('Current Address & Location *'), 'Admin Address');
     await user.click(screen.getByRole('button', { name: /add family to directory/i }));
 
@@ -203,7 +209,7 @@ describe('submission workflows', () => {
       familyName: 'Admin Family',
       status: 'Inactive',
       isPendingCreation: false,
-      members: [expect.objectContaining({ tags: ['Sunday School', 'Choir'] })],
+      members: [expect.objectContaining({ tags: expect.arrayContaining(['Sunday School', 'Choir']) })],
     }), 'admin-token');
     expect(window.alert).toHaveBeenCalledWith('Family added successfully to the directory!');
   });

@@ -9,8 +9,8 @@ import Link from 'next/link';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '@/lib/AuthContext';
 import LocationPicker from '@/components/LocationPicker';
-
-const MEMBER_TAG_OPTIONS = ['Bachelor Meeting', 'Youth Meeting', 'Brothers Meeting', 'Sisters Meeting', 'Sunday School', 'Choir'];
+import { createBlankMember, MemberFormValue, MemberPhoneFields, TagsMultiSelect } from '@/components/MemberFormFields';
+import { formatPhoneNumber, normalizeCountryCode } from '@/lib/phoneUtils';
 
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
   const image = new window.Image();
@@ -88,7 +88,7 @@ export default function AddFamily() {
   const [status, setStatus] = useState('Active');
   const [notes, setNotes] = useState('');
   const [showNativeAddress, setShowNativeAddress] = useState(false);
-  const [members, setMembers] = useState([{ name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: [] as string[] }]);
+  const [members, setMembers] = useState<MemberFormValue[]>([createBlankMember()]);
 
   const [photoUrl, setPhotoUrl] = useState('');
   const [rawImage, setRawImage] = useState<string | null>(null);
@@ -96,8 +96,8 @@ export default function AddFamily() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  const handleAddMember = () => setMembers([...members, { name: '', mobile: '', bloodGroup: '', willingToDonate: false, tags: [] as string[] }]);
-  const handleMemberChange = (index: number, field: string, value: any) => {
+  const handleAddMember = () => setMembers([...members, createBlankMember()]);
+  const handleMemberChange = (index: number, field: keyof MemberFormValue, value: any) => {
     const newMembers = [...members] as any;
     newMembers[index][field] = value;
     setMembers(newMembers);
@@ -128,8 +128,8 @@ export default function AddFamily() {
     setLoading(true);
 
     const primaryMember = members[0];
-    if (!primaryMember.name || !primaryMember.mobile) {
-      alert("The Primary Member must have a full name and mobile number.");
+    if (!primaryMember.name || !primaryMember.callPhone) {
+      alert("The Primary Member must have a full name and call phone number.");
       setLoading(false);
       return;
     }
@@ -157,9 +157,25 @@ export default function AddFamily() {
       }
     }
 
+    const normalizedMembers = members.filter(member => member.name.trim() !== '').map(member => ({
+      ...member,
+      name: member.name.trim(),
+      callCountryCode: normalizeCountryCode(member.callCountryCode),
+      callPhone: member.callPhone.trim(),
+      whatsappCountryCode: normalizeCountryCode(member.whatsappCountryCode || member.callCountryCode),
+      whatsappPhone: member.whatsappPhone.trim(),
+      tags: Array.isArray(member.tags) ? member.tags : []
+    }));
+
+    const normalizedPrimaryMember = normalizedMembers[0];
+
     const payload = {
       familyName: primaryMember.name,
-      primaryMobile: primaryMember.mobile,
+      primaryMobile: formatPhoneNumber(normalizedPrimaryMember.callCountryCode, normalizedPrimaryMember.callPhone),
+      primaryCallCountryCode: normalizedPrimaryMember.callCountryCode,
+      primaryCallPhone: normalizedPrimaryMember.callPhone,
+      primaryWhatsAppCountryCode: normalizedPrimaryMember.whatsappCountryCode,
+      primaryWhatsAppPhone: normalizedPrimaryMember.whatsappPhone,
       
       // INCLUDED SEPARATED MAP DATA IN PAYLOAD
       currentAddress, 
@@ -178,10 +194,7 @@ export default function AddFamily() {
       photoBase64: finalBase64Backup,
 
       status, notes,
-      members: members.filter(m => m.name.trim() !== '').map(m => ({
-        ...m,
-        tags: Array.isArray(m.tags) ? m.tags : []
-      })),
+      members: normalizedMembers,
       lastEdited: new Date().toISOString(),
       submittedBy: userProfile?.name || user?.displayName || user?.email || 'Unknown User',
       isPendingCreation: !isAdmin,
@@ -322,29 +335,23 @@ export default function AddFamily() {
                 )}
 
                 <div className="flex-1 space-y-4">
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="flex-1">
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
-                      <input required placeholder="e.g. John Mark" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name *</label>
+                        <input required placeholder="e.g. John Mark" className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 font-bold ${index === 0 ? 'border-teal-200' : 'border-slate-200'}`} value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} />
+                      </div>
+                      {index > 0 && (
+                        <button type="button" onClick={() => removeMember(index)} className="shrink-0 self-end p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1 ${index === 0 ? 'text-teal-700' : 'text-slate-500'}`}>
-                        {index === 0 ? 'Primary Mobile *' : 'Personal Mobile'}
-                      </label>
-                      <input
-                        required={index === 0}
-                        type="tel"
-                        placeholder="e.g. 9876543210"
-                        className={`w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none focus:border-teal-600 ${index === 0 ? 'border-teal-200 font-bold' : 'border-slate-200'}`}
-                        value={member.mobile || ''}
-                        onChange={e => handleMemberChange(index, 'mobile', e.target.value)}
-                      />
-                    </div>
-                    {index > 0 && (
-                      <button type="button" onClick={() => removeMember(index)} className="shrink-0 self-center p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                        <Trash2 size={18} />
-                      </button>
-                    )}
+                    <MemberPhoneFields
+                      member={member}
+                      index={index}
+                      onChange={(field, value) => handleMemberChange(index, field, value)}
+                    />
                   </div>
 
                   <div>
@@ -354,20 +361,11 @@ export default function AddFamily() {
                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Admin only</span>
                       )}
                     </div>
-                    <select
-                      multiple
+                    <TagsMultiSelect
+                      selectedTags={Array.isArray(member.tags) ? member.tags : []}
                       disabled={!isAdmin}
-                      className={`w-full p-2.5 border rounded-lg text-sm outline-none min-h-[7rem] ${isAdmin ? 'bg-slate-50 border-slate-200 focus:border-teal-600' : 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed'}`}
-                      value={Array.isArray(member.tags) ? member.tags : []}
-                      onChange={e => {
-                        const selectedTags = Array.from(e.target.selectedOptions, option => option.value);
-                        handleMemberChange(index, 'tags', selectedTags);
-                      }}
-                    >
-                      {MEMBER_TAG_OPTIONS.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
+                      onChange={(tags) => handleMemberChange(index, 'tags', tags)}
+                    />
                     {!isAdmin && (
                       <p className="mt-2 text-[11px] font-medium text-slate-500">
                         Tags and roles are read-only for non-admins. Ask an admin to update them.

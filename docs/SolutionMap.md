@@ -287,7 +287,7 @@ Single project; the graph is layer-internal:
 | Cloud Firestore | Database (NoSQL, doc/collection) | Same as above | Client reads, Admin writes |
 | Firebase Storage | Object storage | Same as above | Family photos, songbook images (with 5 MB / image-only rule) |
 | Google Gemini 2.5 Flash | AI API | `GEMINI_API_KEY` (server-only) | [app/api/process-song/route.ts](../app/api/process-song/route.ts) |
-| Google Maps JS + Places + Geocoding | Map / geocoding | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | [components/MapPicker.tsx](../components/MapPicker.tsx), [components/LocationPicker.tsx](../components/LocationPicker.tsx) |
+| Google Maps JS + Places + Geocoding + Advanced Markers | Map / geocoding | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; optional `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | [components/MapPicker.tsx](../components/MapPicker.tsx), [components/LocationPicker.tsx](../components/LocationPicker.tsx) |
 | OpenStreetMap / Nominatim | Map fallback | None (public tile server) | `react-leaflet` fallback |
 | PWA / Service Worker | Client runtime | [public/manifest.json](../public/manifest.json), [public/sw.js](../public/sw.js) | Registered in [app/layout.tsx](../app/layout.tsx) |
 
